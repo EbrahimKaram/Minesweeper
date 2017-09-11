@@ -1,0 +1,1148 @@
+		title	"Minesweeper"
+		list	p=16f84A
+		radix	hex
+		include "p16f84A.inc"
+		__config _XT_OSC & _WDT_OFF & _PWRTE_ON & _CP_OFF
+
+COUNT1	EQU		d'39'
+COUNT2	EQU		d'38'
+COUNT3	EQU		d'37'
+FLIKRCOUNT EQU	d'40'  ;;Used in flikr count
+COUNT1ms1	EQU	d'41'
+TEMP1		EQU	d'42'	
+TOPRINT	EQU		d'36'	;Used By Char To Print
+DUMMY	EQU		d'35'	
+REGGY	EQU		d'34'	;The register we like and use to know where we are	
+COUNT4	EQU		d'33'	;Used to do the 10 second display
+TEMP	EQU		d'32'
+CURSOR	EQU		d'29'
+MINES	EQU		d'30'	;SAVES the Number of mines
+BOXES	EQU		d'31'	;Saves the number of boxes opened without mines
+		ORG 	0x00
+  		GOTO	MAIN
+
+		ORG 	0x04
+		
+		BTFSC	INTCON, RBIF	;Interrupt for RB4 to RB7
+		GOTO	PICK
+
+		BTFSC	INTCON,T0IF		;timer for the 1 secon delay
+		GOTO 	TMR0int
+		
+
+;;;;;;;;;;;;;;;;;;;Iniatialization of the PIC;;;;;;;;;;;;;;;;;;;;;;;;
+MAIN	CLRF	PORTA			;intialization 
+		CLRF	PORTB
+		BSF		STATUS,RP0		;Go to Bank1
+		CLRF	TRISA			;RA4-RA0 as outputs
+		MOVLW	b'11110000'		;Sets RB7-RB4 as inputs and RB3-RB1 as outputs to the LCD
+		MOVWF	TRISB
+		MOVLW	b'10000111'		;set Tmr0 as counter and set the prescalar as large as possible
+		MOVWF	OPTION_REG
+;;;;;;;;;;;;;;;;;;;Iniatialization of the PIC;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;Initialize Count Variable;;;;;;;;;;;;;;
+		movlw	d'152'			;For the 10 second delay
+		movwf 	COUNT1
+		movlw 	h'00'
+		movwf	COUNT2
+		movlw	h'34'
+		movwf	COUNT3
+		MOVLW	d'12' ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		MOVWF	COUNT4
+;;;;;;;;;;;;;;;;;Initialize Count Variable;;;;;;;;;;;;;;
+
+		BCF		STATUS,RP0 
+		BSF		INTCON,GIE		;set Genearl interupt flag to detect interrupts we don't set tmro until hard playing mode
+		BSF		INTCON,RBIE
+
+;;;;;;;;;;;;;;;;Initializing the LCD and setting in in 4 bit mode;;;;;;;;;;;;;;;;;;;
+LCDINT	CALL 	DB40ms
+		MOVLW	B'00010'		;function set
+		MOVWF 	PORTA
+		CALL	ET
+		MOVLW	B'00010'
+		MOVWF 	PORTA
+		CALL	ET
+		MOVLW	B'01000'
+		MOVWF 	PORTA
+		CALL	ET
+
+		MOVLW	B'00000'		;Display on_off control
+		MOVWF 	PORTA
+		CALL	ET
+		MOVLW	B'01111'
+		MOVWF 	PORTA
+		CALL	ET
+
+		MOVLW	B'00000'		;CLEAR DISPLAY
+		MOVWF 	PORTA
+		CALL	ET
+		MOVLW	B'00001'
+		MOVWF 	PORTA
+		CALL 	ET
+
+		MOVLW	B'00000'		;ENTRY MODE SET
+		MOVWF 	PORTA
+		CALL	ET
+		MOVLW	B'00110'
+		MOVWF 	PORTA
+		CALL 	ET
+;;;;;;;;;;;;;;;;Initializing the LCD and setting in in 4 bit mode;;;;;;;;;;;;;;;;;;;
+
+		CALL	WELCOME
+		CALL 	MAINMENU
+		
+
+nothing	GOTO	nothing	;endless loop so it still detects interrupts
+
+
+;#############################################################################################
+;######################Display Screens for LCD################################################
+;#############################################################################################
+;;;;;;;;;;;;;;;;WElcome Screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+WELCOME
+		CALL	CLEARSCREEN
+		CLRF	REGGY			;;I need to clear all the contents of reggy when I get back here
+		BCF		INTCON,T0IE
+		MOVLW	d'12'			;Reset the value of count fo the timer in hard mode
+		MOVWF	COUNT4
+
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+		MOVLW	b'01010111'		;W
+		CAll	PRNTCHR
+		MOVLW	b'01000101'		;E
+		CALL	PRNTCHR
+		MOVLW	b'01001100'		;L
+		CALL	PRNTCHR
+		MOVLW	b'01000011'		;C
+		CALL	PRNTCHR		
+		MOVLW	b'01001111'		;O
+		CALL	PRNTCHR
+		MOVLW	b'01001101'		;M
+		CALL	PRNTCHR
+		MOVLW	b'01000101'		;E
+		CALL	PRNTCHR
+		CALL	FLSHLED
+		
+		CALL 	LOADMAP1		;;MAP1 is loaded by default	
+		MOVLW	d'11'
+		MOVWF	BOXES			;;I have to set the value of the boxes that need to open back since 16-5mines is 11
+		MOVLW	d'1'
+		MOVWF	MINES
+		RETURN
+;;;;;;;;;;;;;;;;WElcome Screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		
+;;;;;;;;;;;;;;;Main Menu;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+MAINMENU
+		CALL	CLEARSCREEN
+		MOVLW	b'00101010'		;*
+		CALL	PRNTCHR
+		MOVLW	b'01001101'		;M
+		CALL 	PRNTCHR		
+		MOVLW	b'01000001'		;A
+		CALL	PRNTCHR
+		MOVLW	b'01010000'		;P
+		CALL	PRNTCHR
+				
+
+		MOVLW	h'40'			;Move to second line
+		MOVWF	CURSOR
+		CALL	SETCURSORLCD
+
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+		MOVLW	b'01010000'		;P
+		CALL	PRNTCHR
+		MOVLW	b'01001100'		;L
+		CALL	PRNTCHR			
+		MOVLW	b'01000001'		;A
+		CALL	PRNTCHR
+		MOVLW	b'01011001'		;Y
+		CALL	PRNTCHR	
+		CALL	RESETCURSOR
+		
+		BCF		REGGY,0			;Set state to 00 to indicate that we are in the menu page 
+		BCF		REGGY,1	
+		RETURN	
+;;;;;;;;;;;;;;;Main Menu;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;Prints the Map Screeen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTMAPSMENU
+		CALL	CLEARSCREEN		;I need to clear screen before I do anything
+		MOVLW	b'01010000'		;P
+		CALL	PRNTCHR
+		MOVLW	b'01010010'		;R
+		CALL	PRNTCHR
+		MOVLW	b'01000101'		;E
+		CALL	PRNTCHR
+		MOVLW	b'01010011'		;S
+		CALL	PRNTCHR
+		MOVLW	b'01010011'		;S
+		CALL	PRNTCHR
+
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+
+		MOVLW	b'01001100'		;L
+		CALL	PRNTCHR
+		
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+
+		MOVLW	b'01010010'		;R
+		CALL	PRNTCHR
+
+		BSF		REGGY,0			;Set state to 01 to indicate that we are in the Map Page 
+		BCF		REGGY,1
+		
+		
+		RETURN
+;;Prints the Map Screeen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;Prints the difficulty screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTDIFFICULTY
+		CALL	CLEARSCREEN		;I need to clear screen before I do anything
+		MOVLW	b'00101010'		;*
+		CALL	PRNTCHR
+		
+		MOVLW	b'01000101'		;E
+		CALL	PRNTCHR
+		MOVLW	b'01000001'		;A
+		CALL	PRNTCHR
+		MOVLW	b'01010011'		;S
+		CALL	PRNTCHR
+		MOVLW	b'01011001'		;Y
+		CALL	PRNTCHR
+
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+
+		MOVLW	b'01001101'		;M
+		CALL 	PRNTCHR	
+		MOVLW	b'01000101'		;E
+		CALL	PRNTCHR
+		MOVLW	b'01000100'		;D
+		CALL	PRNTCHR
+		
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+
+		MOVLW	b'01001000'		;H
+		CALL	PRNTCHR
+		MOVLW	b'01000001'		;A
+		CALL	PRNTCHR
+		MOVLW	b'01010010'		;R
+		CALL	PRNTCHR
+		MOVLW	b'01000100'		;D
+
+		CALL	PRNTCHR
+		CALL 	RESETCURSOR		; Put cursor on the first part 00
+		RETURN
+;;Prints the difficulty screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;Prints WIN screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTWIN	
+		CALL	CLEARSCREEN		;I need to Clear Screen
+		MOVLW	b'01010111'		;W
+		CALL	PRNTCHR
+		MOVLW	b'01001001'		;I
+		CALL	PRNTCHR
+		MOVLW	b'01001110'		;N
+		CALL	PRNTCHR
+		RETURN
+;;Prints WIN screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;Prints Loss Screen######################################
+PRINTLOSS
+		CALL	CLEARSCREEN
+		MOVLW	b'01001100'		;L
+		CALL	PRNTCHR
+		MOVLW	b'01001111'		;O
+		CALL	PRNTCHR
+		MOVLW	b'01010011'		;S
+		CALL	PRNTCHR
+		MOVLW	b'01010011'		;S
+		CALL	PRNTCHR
+		RETURN
+;;Prints Loss Screen######################################
+
+;;Print the Playmode Screen###############################
+PRINTPLAYMODE
+		CALL 	CLEARSCREEN		;I have to clear the LCD first
+		CALL	PRINTSQUARES	;print 8 squares
+		
+		MOVLW	h'40'			;Move to second line
+		MOVWF	CURSOR
+		CALL	SETCURSORLCD
+
+		CALL	PRINTSQUARES
+		
+		MOVLW	h'0F'			
+		MOVWF	CURSOR
+		CALL	SETCURSORLCD
+
+		BTFSC	REGGY, 4		;If Reggy bit 4 is 1 then we are in easy mode 
+		MOVLW	b'01000101'		;E
+
+		BTFSC	REGGY,3		;If Reggy bit 3 is 1 the we are in medium mode
+		MOVLW	b'01001101'		;M
+		
+		BTFSC	REGGY,2		;IF Reggy bit 2 is 1 then we are in hard mode
+		MOVLW	b'01001000'		;H
+		
+		CALL	PRNTCHR	
+
+		BTFSC	REGGY,2		;IF Reggy bit 2 is 1 then we are in hard mode	
+		CALL	PRINTTIME		; In hard mode we have to print the time
+		
+		CALL 	RESETCURSOR		; Put cursor on the first part 00
+		RETURN
+;;Print the Playmode Screen###############################
+
+;;PRINT 8 squares on a line;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTSQUARES
+		MOVLW	b'11011011'		;Prints the square
+		CALL	PRNTCHR
+		MOVLW	b'11011011'		;Prints the square
+		CALL	PRNTCHR
+		MOVLW	b'11011011'		;Prints the square
+		CALL	PRNTCHR
+		MOVLW	b'11011011'		;Prints the square
+		CALL	PRNTCHR
+		MOVLW	b'11011011'		;Prints the square
+		CALL	PRNTCHR
+		MOVLW	b'11011011'		;Prints the square
+		CALL	PRNTCHR
+		MOVLW	b'11011011'		;Prints the square
+		CALL	PRNTCHR
+		MOVLW	b'11011011'		;Prints the square
+		CALL	PRNTCHR
+		RETURN
+;;PRINT 8 squares on a line;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;Print Time remaining;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+PRINTTIME
+		MOVLW	h'4A'			;I'm going to second line 10th character space
+		MOVWF	CURSOR
+		CALL	SETCURSORLCD
+		BSF		INTCON,T0IE
+		
+		MOVLW	b'01010010'		;R
+		CALL	PRNTCHR
+
+		MOVLW	b'01000101'		;E
+		CALL	PRNTCHR
+		
+		MOVLW	b'01001101'		;M
+		CALL	PRNTCHR
+		
+		MOVLW	b'00110001'		;1
+		CALL	PRNTCHR		
+		
+		MOVLW	b'00110010'		;2
+		CALL	PRNTCHR		
+		
+		MOVLW	b'00110000'		;0
+		CALL	PRNTCHR
+
+		RETURN
+;;Print Time remaining;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;Printing the actual contents under the boxes;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTFULLMAP
+		CALL	CLEARSCREEN		;;;I need to clear the screen to start writting on it and now the cursor is at 						;;0x00
+		MOVLW	d'12'
+		MOVWF	FSR
+			
+		
+		MOVLW	d'9'		;;I want to do it 8 times
+		MOVWF	TEMP
+		CALL	LOAD
+		
+		;;Go To next line
+		
+		MOVLW	h'40'			;Move to second line
+		MOVWF	CURSOR
+		CALL	SETCURSORLCD	
+		
+		MOVLW	d'9'		;;I want to do it 8 times for the second line
+		MOVWF	TEMP
+		CALL	LOAD		;;Load a full line of contents
+		RETURN
+
+LOAD	DECFSZ	TEMP,F		;Save it in itself
+		GOTO 	SMTHNG
+		GOTO	STOP		; When temp is 0 that means we already printed 8 of these 
+
+SMTHNG	BTFSC	INDF,7		;;I need to Clear the flag bit So I check if there Is a flag bit 	
+		BCF		INDF,7		;;Reset flag bit to 0
+		MOVFW	INDF
+		CALL	PRNTCHR
+		INCF	FSR
+		GOTO	LOAD		;;Load a full line of contents
+		
+STOP	RETURN
+;;;;;;;;;;;;;;;;;;Printing the actual contents under the boxes;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;#############################################################################################
+;######################Display Screens for LCD################################################
+;#############################################################################################
+
+
+;#############################################################################################
+;######################BUZZER AND LED Functions###############################################
+;#############################################################################################
+;;;;;;;;;;;;;;;LED Flashing Pattern;;;;;;;;;;;;;;;;;;;;;;;;;;
+FLSHLED	MOVLW	d'5'
+		MOVWF	FLIKRCOUNT
+FLKR	BSF		PORTB,2			;Turn On green LED
+		CALL	DB40ms			;Wait 40ms
+		BCF		PORTB,2			;Turn Off green LED
+		BSF		PORTB,3			;Turn On red LED
+		CALL	DB40ms			;Wait 80ms
+		CALL	DB40ms
+		BCF		PORTB,3			;Turn Off Red LED
+		DECFSZ	FLIKRCOUNT,F		;Do the pattern 5 times
+		GOTO	FLKR
+		RETURN
+;;;;;;;;;;;;;;;LED Flashing Pattern;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;Turn Buzz On For detecting mine;;;;;;;;;;;;;;;
+BUZZ	BSF		PORTB,0			;TURN The Buzzer on
+		CALL	DB40ms			;WAit 80ms
+		CALL	DB40ms
+		BCF		PORTB,0			;Turn the buzzzer OFF
+		RETURN
+;;;;;;;;;;;;;;;Turn Buzz On For detecting mine;;;;;;;;;;;;;;;
+;#############################################################################################
+;######################BUZZER AND LED Functions###############################################
+;#############################################################################################
+
+
+;#############################################################################################
+;####################USEFULL Functions that have been used frequently#########################
+;#############################################################################################		
+
+;;;;;;;;;;;;;;;;;Function to PRint CHaracter;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRNTCHR	MOVWF	TOPRINT		;Character must be saved in W before entering the function
+		SWAPF 	TOPRINT,0
+		ANDLW	b'00001111'	;take the upper 4 bits of the character
+		IORLW	b'00010000'	;need to set the RS bit to 1 so it woud take
+		MOVWF	PORTA
+		CALL	ET
+		MOVFW	TOPRINT		;I need to get back my character
+		
+		ANDLW	b'000001111'	;take the lower 4 bits of the character
+		IORLW	b'000010000'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+;;;;;;;;;;;;;;;;;Function to PRint CHaracter;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;;;;;;A delay of 1ms;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+DB1ms	MOVLW	d'249'
+		MOVWF	COUNT1ms1
+	
+
+LOOP1ms	DECFSZ	COUNT1ms1,F
+		GOTO	LOOP1ms
+
+		RETURN
+;;;;;;A delay of 1ms;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;A delay of 40ms;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+DB40ms	INCFSZ	COUNT2, F
+		GOTO	DB40ms
+		DECFSZ 	COUNT3, F
+		GOTO 	DB40ms
+		return
+;;;;;;A delay of 40ms;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;Function to toggle the enable bit;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ET		BSF		PORTB,1
+		NOP
+		BCF		PORTB,1
+		CALL 	DB1ms
+		CALL 	DB1ms
+		CALL 	DB1ms
+		CALL 	DB1ms
+		CALL 	DB1ms
+		CALL 	DB1ms
+		RETURN
+
+;;;;;;;;Function to toggle the enable bit;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;Clears the screen and sets the cursor back to 0x00;;;;;;;;;;;;;;;;;;;;;;
+CLEARSCREEN
+		MOVLW	b'00000'  ;;;Rs bit must be set to zero and RS, R/W, DB7, DB6, DB5, DB4 must be 0
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'00001'	;RS must be 0 and DB3, DB2, DB1 are 0 but DB0 is 1
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+;;;Clears the screen and sets the cursor back to 0x00;;;;;;;;;;;;;;;;;;;;;;	
+
+
+;This function below uses the value in register cursor to set the address of the lcd;;;;
+SETCURSORLCD
+		SWAPF	CURSOR, 0	; W <-- CURSOR SWAPPED (SEND MSB FIRST => NEED TO FLIP CURSOR)
+		ANDLW	b'00000111'
+		IORLW	b'00001000'	
+		MOVWF 	PORTA		; PORTA <-- CURSOR
+		
+		CALL 	ET			; SENDS 0+[CURSOR[7,6,5,4]
+		MOVFW		CURSOR
+		ANDLW		b'00001111'					;; take the lower bits in W
+		MOVWF		PORTA
+		CALL 	ET			; SENDS 0+[CURSOR[3,2,1,0]
+
+		RETURN			; VOILA! Address sent to LCD!
+;This function below uses the value in register cursor to set the address of the lcd;;;;
+
+;;This function resets the the cursor to 0x00;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+RESETCURSOR
+		MOVLW h'00'
+		MOVWF CURSOR
+		CALL SETCURSORLCD
+		RETURN
+;;This function resets the the cursor to 0x00;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;#############################################################################################
+;####################USEFULL Functions that have been used frequently#########################
+;#############################################################################################
+
+	
+
+;#############################################################################################
+;####################Interupt subroutine that are called and end in retfie####################
+;#############################################################################################	
+
+;;;;;The interupt subroutine called by tmr0 and the timer display used in hard mode;;;;;;;;;;
+TMR0int	DECFSZ	COUNT1,	F  	
+		GOTO	ret
+		MOVLW	d'152'		;For 10 seconds	
+		MOVWF 	COUNT1
+
+		DECFSZ	COUNT4,F	;COUNT4 hold the value 11 for the timer
+		GOTO	TIMER
+		
+		MOVLW	d'12' ;12 since timer starts at 120 and we are changing every 10 seconds
+		MOVWF	COUNT4
+		
+		;;I need to check if we are in playing mode and hard mode is on
+		
+		BTFSS	REGGY,2		;;CHECK if Hard mode is on
+		GOTO	ret
+		
+		
+		;;I need to check if in playing mode
+		BTFSS	REGGY,1		;;
+		GOTO	ret
+		BTFSS	REGGY,0
+		GOTO	ret
+		CALL	LOSSSQN	
+
+ret		BCF		INTCON,T0IF
+		CLRF 	TMR0
+		RETFIE
+
+;;;;;;;;;;;;;TO Change the timer;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+TIMER		;Check if hard mode and playing mode state
+		BTFSS	REGGY,2		;;CHECK if Hard mode is on
+		GOTO	JUMP
+		;;I need to check if in playing mode
+		BTFSS	REGGY,1		;;
+		GOTO	JUMP
+		BTFSS	REGGY,0
+		GOTO	JUMP
+		
+		;I need to save the cursor in temp first
+
+		MOVFW	CURSOR
+	
+		MOVWF	TEMP		;Temp holds our current cursor location
+		MOVWF	TEMP	
+		;Know I need to intialize the cursor to change the values of the time
+		MOVLW	h'4D'		;Move to the postion where 1 is diplayed on the screen
+		MOVWF	CURSOR
+		CALL	SETCURSORLCD
+		
+		;;I need to check the digits I need to display
+		BTFSS	COUNT4,3	;; The common thing between 10 and 11 is that they have 101x
+		GOTO	ONEDIGIT
+		
+		BTFSC	COUNT4,2
+		GOTO	ONEDIGIT
+		
+		BTFSS	COUNT4,1
+		GOTO	ONEDIGIT
+		
+		MOVLW	b'00110001'		;;Printing the l	
+		CALL	PRNTCHR	
+		
+		MOVFW	COUNT4
+		
+
+		XORLW	b'00111010'		;;Prints Either 1 or 0 depending on the last bit of COUNT4
+		CALL	PRNTCHR
+		GOTO	SKIP
+ONEDIGIT
+		MOVLW	b'00100000'
+		CALL	PRNTCHR
+
+		MOVFW	COUNT4
+		IORLW	b'00110000'	;;Since all the number start with a the sequence 0011
+		CALL	PRNTCHR 	;Prints the value in COUNT4
+		
+																		;;I neeed to put back the cursor in its old position
+SKIP	MOVFW	TEMP		
+		MOVWF	CURSOR
+		CALL	SETCURSORLCD
+JUMP	GOTO	ret
+;;;;;;;;;;;;;TO Change the timer;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;The interupt subroutine called by tmr0 and the timer display used in hard mode;;;;;;;;;;
+
+
+;;;Picks the interupt routine for RBIF;;;;;;;;;;;
+PICK	CALL	DB1ms
+		CALL	DB1ms
+		BTFSS	PORTB,7 	;Checks RB7 is set then we go to right subroutine	
+		CALL	RIGHT
+
+		BTFSS	PORTB,6		;Checks RB6 is set then we go to the left subroutine
+		CALL	LEFT
+
+		BTFSS	PORTB,5		;Checks RB5 is set then we go to the up-DOWN subroutine
+		CALL	U_D
+
+		BTFSS	PORTB,4		;Checks RB4 is set then we go to the enter subroutine
+		CALL	Enter
+		
+		BCF		INTCON,RBIF	;We have to reset the interrupt flag
+		RETFIE
+;;;Picks the interupt routine;;;;;;;;;;;
+
+;#############################################################################################
+;####################Interupt subroutine that are called and end in retfie####################
+;#############################################################################################
+		 
+
+;#############################################################################################
+;####################The WIN and LOSS Sequence################################################
+;#############################################################################################
+;;;;;The Sequence that should be down when we have a loss;;;;;;;;;;;;;
+LOSSSQN			;;;(Loss Sequence)
+		BSF		PORTB,3		;TURN RED LED ON
+		CALL	PRINTLOSS
+		CALL	DB40ms		;CALL 
+		CALL	DB40ms		;DElAY of 80ms
+		CALL	DB40ms
+		CALL 	DB40ms			;;DElAY of 120ms
+		CALL	DB40ms
+		CALL	DB40ms
+		CALL	PRINTFULLMAP	;Print 
+		CALL 	DB40ms
+		CALL	DB40ms		
+		CALL	DB40ms
+		CALL 	DB40ms			;;DElAY of 120ms
+		CALL	DB40ms
+		CALL	DB40ms
+		CALL	WELCOME		;This should Go to welcome and start with the sequence again(Problem has no return)
+		CALL 	MAINMENU
+		RETURN
+;;;;;The Sequence that should be down when we have a loss;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;The Sequence of Displays we get when we win;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+WINSQN	BSF		PORTB,2			;Green LED must be on
+		CALL	PRINTWIN
+		CALL	DB40ms			;CALL a 120ms Delay
+		CALL	DB40ms
+		CALL	DB40ms
+		CALL	DB40ms			;CALL a 120ms Delay
+		CALL	DB40ms
+		CALL	DB40ms
+		CALL	PRINTFULLMAP	;Print 
+		CALL 	DB40ms			;;DElAY of 120ms
+		CALL	DB40ms
+		CALL	DB40ms
+		CALL 	DB40ms			;;DElAY of 120ms
+		CALL	DB40ms
+		CALL	DB40ms			
+		CALL	WELCOME
+		BCF		PORTB,2
+		CALL	MAINMENU
+		RETURN			
+;;;;;;;;;;;;;;;;;;;The Sequence of Displays we get when we win;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;#############################################################################################
+;####################The WIN and LOSS Sequence################################################
+;#############################################################################################
+
+
+;#############################################################################################
+;#################################LOADING MAPS################################################
+;#############################################################################################
+
+;;;;;;;;;;;;;;;;;Loads the contents of map 1 into its qualifying registers;;;;;;;;;;;
+LOADMAP1 ;;(something like 16 lines)
+		movlw 	d'12'
+		movwf 	FSR			;;Intialize the FSR to the 12th register
+		movlw	b'00110000'		;;Loads 0 into first block
+		call 	InDrct
+		movlw	b'00110001'		;;Loads 1 in the 2nd block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 3rdblock
+		call 	InDrct
+		movlw	b'00110010'		;;Loads 2 in the 4th block
+		call 	InDrct	
+		movlw	b'00110010'		;;Loads 2 in the 5th block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 6th block
+		call 	InDrct
+		movlw	b'00110011'		;;Loads 3 in the 7th block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 8th block
+		call 	InDrct
+	
+		;;;Second line
+		movlw	b'00110000'		;;Loads 0 into first block
+		call 	InDrct
+		movlw	b'00110001'		;;Loads 1 in the 2nd block
+		call 	InDrct
+		movlw	b'00110001'		;;Loads 1 in the 3rd block
+		call 	InDrct
+		movlw	b'00110010'		;;Loads 2 in the 4th block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 5th block
+		call 	InDrct
+		movlw	b'00110010'		;;Loads 2 in the 6th block
+		call 	InDrct
+		movlw	b'00110011'		;;Loads 3 in the 7th block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 8th block
+		call 	InDrct
+
+		movlw 	d'12'
+		movwf 	FSR			;;Intialize the FSR Back to register 12 since in playing mode we are goinng to start here 
+		RETURN
+;;;;;;;;;;;;;;;;;Loads the contents of map 1(The default map) into its qualifying registers;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;Loads the contents of map 2(Our Own Map) into its qualifying registers;;;;;;;;;;;;;;;
+LOADMAP2
+		movlw 	d'12'
+		movwf 	FSR			;;Intialize the FSR to the 12th register
+		
+		;;First Line
+		movlw	b'00110010'		;;Loads 2 in the 1st block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 2nd block
+		call 	InDrct
+		movlw	b'00110011'		;;Loads 3 in the 3rd block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 4th block
+		call 	InDrct
+		movlw	b'00110011'		;;Loads 3 in the 5th block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 6th block
+		call 	InDrct	
+		movlw	b'00110010'		;;Loads 2 in the 7th block
+		call 	InDrct
+		movlw	b'00110000'		;;Loads 0 into 8th block
+		call 	InDrct
+	
+		;;Second Line
+		movlw	b'00110010'		;;Loads 2 in the 1stblock
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 2nd block
+		call 	InDrct	
+		movlw	b'00110011'		;;Loads 3 in the 3rd block
+		call 	InDrct
+		movlw	b'00110001'		;;Loads 1 in the 4th block
+		call 	InDrct
+		movlw	b'00110011'		;;Loads 3 in the 5th block
+		call 	InDrct
+		movlw	b'00101010'		;;Loads (*) mine in 6th block
+		call 	InDrct
+		movlw	b'00110010'		;;Loads 2 in the 7th block
+		call 	InDrct
+		movlw	b'00110000'		;;Loads 0 into 8th block
+		call 	InDrct
+
+
+		movlw 	d'12'
+		movwf 	FSR			;;Intialize the FSR Back to register 12 since in playing mode we are goinng to start here 
+		RETURN
+;;;;;;;;;;;;;;;;;Loads the contents of map 2(Our Own Map) into its qualifying registers;;;;;;;;;;;;;;;
+
+;;;a function that helps reduce the number of lines od code;;;;;;;;;;;;;;
+InDrct	movwf	INDF
+		Incf	FSR
+		RETURN
+;;;a function that helps reduce the number of lines od code;;;;;;;;;;;;;;
+
+;#############################################################################################
+;#################################LOADING MAPS################################################
+;#############################################################################################
+
+
+;##############################################################################################
+;##################################Interrupt logic#############################################
+;##############################################################################################
+Enter	BTFSC	REGGY,1
+		GOTO	ENTER1x
+		GOTO	ENTER0x
+	
+ENTER1x	BTFSC	REGGY,0
+		GOTO	OPENBOX
+		GOTO	ENTER10
+
+ENTER0x	BTFSC	REGGY,0
+		RETURN
+		GOTO	ENTER00
+		
+		RETURN
+
+
+;ADDRESS COUNTER is (1)0xx xxxx for first line 
+;		    (1)1xx xxxx for second line
+
+ENTER00	BTFSS	CURSOR, 6
+		CALL 	ENTER00A	;If cursor[6] =0 (first line) goto enter00A
+	
+		BTFSC	CURSOR, 6
+		CALL 	ENTER00B	;If cursor[6] =1 (2nd line) goto enter00B
+		RETURN
+	
+
+ENTER00A	
+		BSF		REGGY, 0	; reggy[0] =1 => new state is 01	
+		CALL 	PRINTMAPSMENU	; print maps menu subroutine
+		RETURN
+ENTER00B
+		BSF		REGGY, 1	; reggy[1] =1 => new state is 10 for dicciculty chose
+		GOTO	PRINTDIFFICULTY	
+	
+
+ENTER10	MOVFW	CURSOR		; W<--CURSOR, note CURSOR can be destroyed at this stage
+		XORLW	b'00000000'	; if CURSOR == 0X00 (EASY), W=0X00
+		BTFSC	STATUS, 2	; if Z flag =1
+		CALL	SETEASY		;I need to set the flag and set the mines to 2 rather than the default 1
+
+		MOVFW	CURSOR
+		XORLW	b'00000101'	; if CURSOR == 0X05 (MED), W=0X00
+		BTFSC	STATUS, 2	; if Z flag =1 goto ENTER10M
+
+		BSF		REGGY, 3	; 	set Med flag
+
+		MOVFW	CURSOR
+		XORLW	b'00001001'	; if CURSOR == 0X09 (MED), W=0X00
+		BTFSC	STATUS, 2	; if Z flag =1 goto ENTER10H
+		BSF		REGGY, 2	; 	set Hard flag
+
+
+		
+		CALL	DB40ms
+		BSF		REGGY, 1
+		BSF 	REGGY, 0	; set State flags to 11
+
+		CLRF	CURSOR 		; reset cursor address to zero (1st line, 1st column)
+		CALL	RESETCURSOR	; If needed    (MIGHT NOT  Be needed)
+		
+		GOTO	PRINTPLAYMODE	
+		RETURN
+
+SETEASY	BSF		REGGY, 4	; 	set Easy flag
+		MOVLW	d'2'
+		MOVWF	MINES		;Number of mines has to be set to 2	
+		RETURN
+
+;LEFT Subroutine;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+LEFT
+		BTFSC	REGGY,1
+		GOTO	LEFT1x
+		GOTO	LEFT0x
+	
+LEFT1x	BTFSC	REGGY,0
+		GOTO	LEFT11
+		RETURN
+
+LEFT0x	BTFSC	REGGY,0
+		GOTO 	LEFT01
+		RETURN
+
+		;No need to check for 00 and 10 since Left button is not used
+		RETURN			
+
+LEFT01	BCF		REGGY, 5	; Reggy[5] = 0 => map1
+		BSF		PORTB, 2	; turn green LED ON
+		BCF		PORTB, 3	;Turn Red LED OFF
+		CALL	LOADMAP1
+		CALL	MAINMENU
+		RETURN
+
+LEFT11	MOVLW	d'1'		; W <-- 1
+		SUBWF	CURSOR, 1	; CURSOR <-- CURSOR-1
+		SUBWF	FSR, 1		; FSR <-- FSR -1
+		MOVF	CURSOR, 0	; W <-- CURSOR (-1)
+		MOVWF	TEMP		; TEMP <-- W	just a copy
+	
+		XORLW	h'FF'		; W = W XOR CURSOR(-1) ==> if cursor was 0x00 (0x00-1 = 0xFF)
+		BTFSC	STATUS, 2	; if Z flag =1 (if cursor was at 0x00)
+		CALL	LEFT11A		; GOTO LEFT11A
+
+		MOVF	TEMP,0		; W <-- initial CURSOR (-1), in case LEFT11A was executed 
+							; both CURSOR and W have been modified
+
+		XORLW	h'3F'		; W = W XOR CURSOR(-1) ==> if cursor was 0x40 (0x40-1 = 0x3F)
+		BTFSC	STATUS, 2	; if Z flag =1 (if cursor was at 0x40)
+		CALL	LEFT11B		; GOTO LEFT11B
+
+		CALL 	SETCURSORLCD	; set cursor LCD
+
+		RETURN
+
+LEFT11A	MOVLW	h'00'		; W <-- 0x4F (2nd row, last column)
+		MOVWF	CURSOR		; CURSOR <-- W						;BONUS;
+		MOVLW	D'12'		; W <-- 27 (2nd row, last column)
+		MOVWF	FSR			; FSR <-- W
+		RETURN
+
+LEFT11B	MOVLW	h'07'		; W <-- 0x0F (1st row, last column)
+		MOVWF	CURSOR		; CURSOR <-- W						;BONUS;
+		MOVLW	d'19'
+		MOVWF	FSR	
+		RETURN	
+
+;RIGHT Subroutine;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+RIGHT	BTFSC	REGGY,1
+		GOTO	RIGHT1x
+		GOTO	RIGHT0x
+	
+RIGHT1x	BTFSC	REGGY,0
+		GOTO	RIGHT11
+		GOTO 	RIGHT10
+
+RIGHT0x	BTFSC	REGGY,0
+		GOTO 	RIGHT01
+		RETURN
+
+		RETURN
+
+
+
+RIGHT01	BCF		REGGY, 5	; Reggy[5] = 1 => map2
+		BSF		PORTB, 3	; turn red LED ON
+		BCF		PORTB, 2	;Turn Green led OFF
+		CALL	LOADMAP2	;LOAD MAP2
+		CALL	MAINMENU
+		RETURN
+
+
+RIGHT10	MOVF	CURSOR,	0	;W <-- CURSOR 
+		MOVWF	TEMP		; TEMP <-- W	just a copy
+	
+		XORLW	h'00'		;W <-- W XOR 0x00
+		BTFSC	STATUS, 2	; if Z flag =1 (if cursor at 0x00 -> EASY)
+		CALL	RIGHT10E	; GOTO RIGHT10E
+
+		MOVF	TEMP,0		; W <-- initial CURSOR, in case RIGHT10E was executed 
+                                ;both CURSOR and W have been modified and need to be restored
+
+		XORLW	h'05'		;W <-- W XOR 0x05
+		BTFSC	STATUS, 2	; if Z flag =1 (if cursor at 0x05 -> MED)
+		CALL	RIGHT10M	; GOTO RIGHT10M
+
+		MOVF	TEMP,0		; W <-- initial CURSOR, in case RIGHT10M was executed 
+                                ;both CURSOR and W have been modified and need to be restored
+
+		XORLW	h'09'		;W <-- W XOR 0x09
+		BTFSC	STATUS, 2	; if Z flag =1 (if cursor at 0x09 -> HARD)
+		CALL	RIGHT10H	; GOTO RIGHT10H
+
+		CALL 	SETCURSORLCD	; set cursor LCD
+
+		RETURN
+
+
+RIGHT10E
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+		MOVLW 	h'05'		;W <-- 0x05 (cursor pointing on MED)
+		MOVWF	CURSOR		; CURSOR <-- W
+		CALL 	SETCURSORLCD
+		MOVLW	b'00101010'		;*
+		CALL	PRNTCHR
+		
+		
+		RETURN
+
+RIGHT10M
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+		CALL 	SETCURSORLCD
+		MOVLW 	h'09'		;W <-- 0x09 (cursor pointing on HARD)
+		MOVWF	CURSOR		; CURSOR <-- W
+		CALL 	SETCURSORLCD
+		MOVLW	b'00101010'		;*
+		CALL	PRNTCHR
+		
+
+		RETURN
+
+RIGHT10H
+		MOVLW	b'00100000'		;Space
+		CALL	PRNTCHR
+		CALL 	SETCURSORLCD
+		
+		MOVLW 	h'00'		;W <-- 0x00 (cursor pointing on EASY)
+		MOVWF	CURSOR		; CURSOR <-- W
+		CALL 	SETCURSORLCD
+		MOVLW	b'00101010'		;*
+		CALL	PRNTCHR
+		CALL 	SETCURSORLCD
+		RETURN
+
+
+RIGHT11	MOVLW	d'1'		; W <-- 1
+		ADDWF	CURSOR, 1	; CURSOR <-- CURSOR+1
+		ADDWF	FSR,1		; FSR <-- FSR+1
+		MOVF	CURSOR, 0	; W <-- CURSOR (+1)
+		MOVWF	TEMP		; TEMP <-- W	just a copy
+	
+		XORLW	h'08'		; W = W XOR CURSOR(+1) ==> if cursor was 0x0F (0x0F+1 = 0x10)
+		BTFSC	STATUS, 2	; if Z flag =1 (if cursor was at 0x00)
+		CALL	RIGHT11A	; GOTO RIGHT11A
+
+		MOVF	TEMP,0		; W <-- initial CURSOR (+1), in case RIGHT11A was executed 
+				;both CURSOR and W have been modified
+
+		XORLW	h'48'		; W = W XOR CURSOR(+1) ==> if cursor was 0x4F (0x4F+1 = 0x50)
+		BTFSC	STATUS, 2	; if Z flag =1 (if cursor was at 0x4F)
+		CALL	RIGHT11B	; GOTO RIGHT11B
+
+		CALL	SETCURSORLCD	; set cursor LCD
+
+		RETURN
+	
+
+RIGHT11A
+		MOVLW	h'40'		; W <-- 0x4F (2nd row, 1st column)		;BONUS;
+		MOVWF	CURSOR		; CURSOR <-- W
+		MOVLW	d'20'
+		MOVWF	FSR
+		RETURN
+
+RIGHT11B
+		MOVLW	h'00'		; W <-- 0x00 (1st row, 1st column)		;BONUS;
+		MOVWF	CURSOR		; CURSOR <-- W
+		MOVLW	D'12'		; W <-- 12 (1st row, 1st column) 
+		MOVWF	FSR			; FSR <-- W
+		RETURN
+;Right Subroutine;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;UP_DOWN SUBROUTINE############################################
+U_D		BTFSC	REGGY,1
+		GOTO	UD1x
+		GOTO	UD0x
+	
+UD1x	BTFSC	REGGY,0
+		GOTO	U_D2
+		RETURN
+
+UD0x	BTFSC	REGGY,0
+		RETURN
+		GOTO 	U_D1
+
+		RETURN
+
+;ADDRESS COUNTER is (1)0xx xxxx for first line 
+;		    (1)1xx xxxx for second line
+
+U_D1	MOVLW	b'00100000'	;Space
+		CALL 	PRNTCHR
+		BTFSS	CURSOR, 6	; If cursor[6] =0 (first line)
+		
+		MOVLW	h'40'		; W <--0x40
+		BTFSC	CURSOR, 6	; If cursor[6] =1 (2nd line)
+		MOVLW	h'00'		; W <--0x00
+
+		
+		MOVWF	CURSOR		; CURSOR <-- W
+		
+
+		CALL	SETCURSORLCD	; calling new function
+		MOVLW	b'00101010'	;Space
+		CALL 	PRNTCHR
+
+		CALL	SETCURSORLCD	
+		RETURN
+
+
+U_D2	MOVLW	h'40'   	; W <-- 40
+		BTFSS	CURSOR, 6	; If cursor[6] =0 (first line)
+		GOTO	Line2
+		GOTO	Line1
+Line1		
+		SUBWF	CURSOR, 1	; CURSOR <-- CURSOR - 0x40
+		MOVLW	D'8'
+		SUBWF	FSR, 1		; FSR <-- FSR - 8
+		call 	SETCURSORLCD
+		RETURN
+
+Line2	
+		ADDWF	CURSOR, 1	; CURSOR <--0x40 + CURSOR
+		MOVLW	D'8'
+		ADDWF	FSR, 1		; FSR <--FSR +8
+		call    SETCURSORLCD
+		RETURN
+;UP_DOWN SUBROUTINE############################################
+
+;##############################################################################################
+;##################################Interrupt logic#############################################
+;##############################################################################################
+		
+
+
+;##############################################################################################
+;####################(Open box and print inner value) Playing Mode Logic ######################
+;##############################################################################################
+
+;;;;;;;;;;;;;;;;;;;Opening the box and seeing what we have;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+OPENBOX	BTFSC	INDF,7		; In order not to open the box again I need To check a bit in INDF
+		GOTO	FREEZE
+		BTFSS	INDF,4		;A mine has the fourth bit(* is 00101010) as 0. everything else has it as 1
+		GOTO	HITMINE
+		GOTO 	HITBOX
+	
+HITMINE	CALL	BUZZ
+		DECFSZ	MINES		;We Decrement the number of mines and we check if it is 0 or not
+		GOTO	PRINTBOX
+		GOTO	LOSSSQN
+
+HITBOX	DECFSZ	BOXES		;We Decrement the number of boxes without mines
+		GOTO	PRINTBOX
+		GOTO	WINSQN
+
+PRINTBOX
+		MOVFW	INDF
+		CALL 	PRNTCHR
+		CALL 	SETCURSORLCD	;to put the cursor back in place
+		BSF		INDF,7
+FREEZE	RETURN
+
+;;;;;;;;;;;;;;;;;;;Opening the box and seeing what we have;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;##############################################################################################
+;####################(Open box and print inner value) Playing Mode Logic ######################
+;##############################################################################################
+		END

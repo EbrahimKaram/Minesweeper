@@ -1,0 +1,188 @@
+MPLINK 4.35, Linker
+Linker Map File - Created Mon May 04 16:11:16 2015
+
+                                 Section Info
+                  Section       Type    Address   Location Size(Bytes)
+                ---------  ---------  ---------  ---------  ---------
+                   .org_0       code   0x000000    program   0x000002
+                   .cinit    romdata   0x000001    program   0x000004
+                   .org_1       code   0x000004    program   0x0005aa
+      .config_2007_CODE.O       code   0x002007    program   0x000002
+
+
+
+                              Program Memory Usage 
+                               Start         End      
+                           ---------   ---------      
+                            0x000000    0x000002      
+                            0x000004    0x0002d8      
+                            0x002007    0x002007      
+            729 out of 1093 program addresses used, program memory utilization is 66%
+
+
+
+                              Symbols - Sorted by Name
+                     Name    Address   Location    Storage File                     
+                ---------  ---------  ---------  --------- ---------                
+                     BUZZ   0x000114    program     static E:\Final Version\code.asm
+              CLEARSCREEN   0x000139    program     static E:\Final Version\code.asm
+                    DB1ms   0x000125    program     static E:\Final Version\code.asm
+                   DB40ms   0x00012a    program     static E:\Final Version\code.asm
+                  ENTER00   0x000209    program     static E:\Final Version\code.asm
+                 ENTER00A   0x00020e    program     static E:\Final Version\code.asm
+                 ENTER00B   0x000211    program     static E:\Final Version\code.asm
+                  ENTER0x   0x000205    program     static E:\Final Version\code.asm
+                  ENTER10   0x000213    program     static E:\Final Version\code.asm
+                  ENTER1x   0x000202    program     static E:\Final Version\code.asm
+                       ET   0x00012f    program     static E:\Final Version\code.asm
+                    Enter   0x0001ff    program     static E:\Final Version\code.asm
+                     FLKR   0x00010a    program     static E:\Final Version\code.asm
+                  FLSHLED   0x000108    program     static E:\Final Version\code.asm
+                   FREEZE   0x0002d8    program     static E:\Final Version\code.asm
+                   HITBOX   0x0002d1    program     static E:\Final Version\code.asm
+                  HITMINE   0x0002cd    program     static E:\Final Version\code.asm
+                   InDrct   0x0001fc    program     static E:\Final Version\code.asm
+                     JUMP   0x000180    program     static E:\Final Version\code.asm
+                   LCDINT   0x00001b    program     static E:\Final Version\code.asm
+                     LEFT   0x00022a    program     static E:\Final Version\code.asm
+                   LEFT01   0x000234    program     static E:\Final Version\code.asm
+                   LEFT0x   0x000230    program     static E:\Final Version\code.asm
+                   LEFT11   0x00023a    program     static E:\Final Version\code.asm
+                  LEFT11A   0x000248    program     static E:\Final Version\code.asm
+                  LEFT11B   0x00024d    program     static E:\Final Version\code.asm
+                   LEFT1x   0x00022d    program     static E:\Final Version\code.asm
+                     LOAD   0x0000fe    program     static E:\Final Version\code.asm
+                 LOADMAP1   0x0001b2    program     static E:\Final Version\code.asm
+                 LOADMAP2   0x0001d7    program     static E:\Final Version\code.asm
+                  LOOP1ms   0x000127    program     static E:\Final Version\code.asm
+                  LOSSSQN   0x00018d    program     static E:\Final Version\code.asm
+                    Line1   0x0002be    program     static E:\Final Version\code.asm
+                    Line2   0x0002c3    program     static E:\Final Version\code.asm
+                     MAIN   0x000008    program     static E:\Final Version\code.asm
+                 MAINMENU   0x00005a    program     static E:\Final Version\code.asm
+                 ONEDIGIT   0x000178    program     static E:\Final Version\code.asm
+                  OPENBOX   0x0002c8    program     static E:\Final Version\code.asm
+                     PICK   0x000181    program     static E:\Final Version\code.asm
+                 PRINTBOX   0x0002d4    program     static E:\Final Version\code.asm
+          PRINTDIFFICULTY   0x00008a    program     static E:\Final Version\code.asm
+             PRINTFULLMAP   0x0000f1    program     static E:\Final Version\code.asm
+                PRINTLOSS   0x0000b1    program     static E:\Final Version\code.asm
+            PRINTMAPSMENU   0x000074    program     static E:\Final Version\code.asm
+            PRINTPLAYMODE   0x0000bb    program     static E:\Final Version\code.asm
+             PRINTSQUARES   0x0000cf    program     static E:\Final Version\code.asm
+                PRINTTIME   0x0000e0    program     static E:\Final Version\code.asm
+                 PRINTWIN   0x0000a9    program     static E:\Final Version\code.asm
+                  PRNTCHR   0x000119    program     static E:\Final Version\code.asm
+              RESETCURSOR   0x00014a    program     static E:\Final Version\code.asm
+                    RIGHT   0x000252    program     static E:\Final Version\code.asm
+                  RIGHT01   0x00025c    program     static E:\Final Version\code.asm
+                  RIGHT0x   0x000258    program     static E:\Final Version\code.asm
+                  RIGHT10   0x000262    program     static E:\Final Version\code.asm
+                 RIGHT10E   0x000271    program     static E:\Final Version\code.asm
+                 RIGHT10H   0x000282    program     static E:\Final Version\code.asm
+                 RIGHT10M   0x000279    program     static E:\Final Version\code.asm
+                  RIGHT11   0x00028c    program     static E:\Final Version\code.asm
+                 RIGHT11A   0x00029a    program     static E:\Final Version\code.asm
+                 RIGHT11B   0x00029f    program     static E:\Final Version\code.asm
+                  RIGHT1x   0x000255    program     static E:\Final Version\code.asm
+             SETCURSORLCD   0x000140    program     static E:\Final Version\code.asm
+                  SETEASY   0x000226    program     static E:\Final Version\code.asm
+                     SKIP   0x00017d    program     static E:\Final Version\code.asm
+                   SMTHNG   0x000101    program     static E:\Final Version\code.asm
+                     STOP   0x000107    program     static E:\Final Version\code.asm
+                    TIMER   0x000160    program     static E:\Final Version\code.asm
+                  TMR0int   0x00014e    program     static E:\Final Version\code.asm
+                     UD0x   0x0002aa    program     static E:\Final Version\code.asm
+                     UD1x   0x0002a7    program     static E:\Final Version\code.asm
+                      U_D   0x0002a4    program     static E:\Final Version\code.asm
+                     U_D1   0x0002ae    program     static E:\Final Version\code.asm
+                     U_D2   0x0002ba    program     static E:\Final Version\code.asm
+                  WELCOME   0x00003a    program     static E:\Final Version\code.asm
+                   WINSQN   0x00019f    program     static E:\Final Version\code.asm
+                  nothing   0x000039    program     static E:\Final Version\code.asm
+                      ret   0x00015d    program     static E:\Final Version\code.asm
+
+
+
+                              Symbols - Sorted by Address
+                     Name    Address   Location    Storage File                     
+                ---------  ---------  ---------  --------- ---------                
+                     MAIN   0x000008    program     static E:\Final Version\code.asm
+                   LCDINT   0x00001b    program     static E:\Final Version\code.asm
+                  nothing   0x000039    program     static E:\Final Version\code.asm
+                  WELCOME   0x00003a    program     static E:\Final Version\code.asm
+                 MAINMENU   0x00005a    program     static E:\Final Version\code.asm
+            PRINTMAPSMENU   0x000074    program     static E:\Final Version\code.asm
+          PRINTDIFFICULTY   0x00008a    program     static E:\Final Version\code.asm
+                 PRINTWIN   0x0000a9    program     static E:\Final Version\code.asm
+                PRINTLOSS   0x0000b1    program     static E:\Final Version\code.asm
+            PRINTPLAYMODE   0x0000bb    program     static E:\Final Version\code.asm
+             PRINTSQUARES   0x0000cf    program     static E:\Final Version\code.asm
+                PRINTTIME   0x0000e0    program     static E:\Final Version\code.asm
+             PRINTFULLMAP   0x0000f1    program     static E:\Final Version\code.asm
+                     LOAD   0x0000fe    program     static E:\Final Version\code.asm
+                   SMTHNG   0x000101    program     static E:\Final Version\code.asm
+                     STOP   0x000107    program     static E:\Final Version\code.asm
+                  FLSHLED   0x000108    program     static E:\Final Version\code.asm
+                     FLKR   0x00010a    program     static E:\Final Version\code.asm
+                     BUZZ   0x000114    program     static E:\Final Version\code.asm
+                  PRNTCHR   0x000119    program     static E:\Final Version\code.asm
+                    DB1ms   0x000125    program     static E:\Final Version\code.asm
+                  LOOP1ms   0x000127    program     static E:\Final Version\code.asm
+                   DB40ms   0x00012a    program     static E:\Final Version\code.asm
+                       ET   0x00012f    program     static E:\Final Version\code.asm
+              CLEARSCREEN   0x000139    program     static E:\Final Version\code.asm
+             SETCURSORLCD   0x000140    program     static E:\Final Version\code.asm
+              RESETCURSOR   0x00014a    program     static E:\Final Version\code.asm
+                  TMR0int   0x00014e    program     static E:\Final Version\code.asm
+                      ret   0x00015d    program     static E:\Final Version\code.asm
+                    TIMER   0x000160    program     static E:\Final Version\code.asm
+                 ONEDIGIT   0x000178    program     static E:\Final Version\code.asm
+                     SKIP   0x00017d    program     static E:\Final Version\code.asm
+                     JUMP   0x000180    program     static E:\Final Version\code.asm
+                     PICK   0x000181    program     static E:\Final Version\code.asm
+                  LOSSSQN   0x00018d    program     static E:\Final Version\code.asm
+                   WINSQN   0x00019f    program     static E:\Final Version\code.asm
+                 LOADMAP1   0x0001b2    program     static E:\Final Version\code.asm
+                 LOADMAP2   0x0001d7    program     static E:\Final Version\code.asm
+                   InDrct   0x0001fc    program     static E:\Final Version\code.asm
+                    Enter   0x0001ff    program     static E:\Final Version\code.asm
+                  ENTER1x   0x000202    program     static E:\Final Version\code.asm
+                  ENTER0x   0x000205    program     static E:\Final Version\code.asm
+                  ENTER00   0x000209    program     static E:\Final Version\code.asm
+                 ENTER00A   0x00020e    program     static E:\Final Version\code.asm
+                 ENTER00B   0x000211    program     static E:\Final Version\code.asm
+                  ENTER10   0x000213    program     static E:\Final Version\code.asm
+                  SETEASY   0x000226    program     static E:\Final Version\code.asm
+                     LEFT   0x00022a    program     static E:\Final Version\code.asm
+                   LEFT1x   0x00022d    program     static E:\Final Version\code.asm
+                   LEFT0x   0x000230    program     static E:\Final Version\code.asm
+                   LEFT01   0x000234    program     static E:\Final Version\code.asm
+                   LEFT11   0x00023a    program     static E:\Final Version\code.asm
+                  LEFT11A   0x000248    program     static E:\Final Version\code.asm
+                  LEFT11B   0x00024d    program     static E:\Final Version\code.asm
+                    RIGHT   0x000252    program     static E:\Final Version\code.asm
+                  RIGHT1x   0x000255    program     static E:\Final Version\code.asm
+                  RIGHT0x   0x000258    program     static E:\Final Version\code.asm
+                  RIGHT01   0x00025c    program     static E:\Final Version\code.asm
+                  RIGHT10   0x000262    program     static E:\Final Version\code.asm
+                 RIGHT10E   0x000271    program     static E:\Final Version\code.asm
+                 RIGHT10M   0x000279    program     static E:\Final Version\code.asm
+                 RIGHT10H   0x000282    program     static E:\Final Version\code.asm
+                  RIGHT11   0x00028c    program     static E:\Final Version\code.asm
+                 RIGHT11A   0x00029a    program     static E:\Final Version\code.asm
+                 RIGHT11B   0x00029f    program     static E:\Final Version\code.asm
+                      U_D   0x0002a4    program     static E:\Final Version\code.asm
+                     UD1x   0x0002a7    program     static E:\Final Version\code.asm
+                     UD0x   0x0002aa    program     static E:\Final Version\code.asm
+                     U_D1   0x0002ae    program     static E:\Final Version\code.asm
+                     U_D2   0x0002ba    program     static E:\Final Version\code.asm
+                    Line1   0x0002be    program     static E:\Final Version\code.asm
+                    Line2   0x0002c3    program     static E:\Final Version\code.asm
+                  OPENBOX   0x0002c8    program     static E:\Final Version\code.asm
+                  HITMINE   0x0002cd    program     static E:\Final Version\code.asm
+                   HITBOX   0x0002d1    program     static E:\Final Version\code.asm
+                 PRINTBOX   0x0002d4    program     static E:\Final Version\code.asm
+                   FREEZE   0x0002d8    program     static E:\Final Version\code.asm
+
+

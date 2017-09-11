@@ -1,0 +1,1489 @@
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001                 title   "Minesweeper"
+                      00002                 list    p=16f84A
+                      00003                 radix   hex
+                      00004                 include "p16f84A.inc"
+                      00001         LIST
+                      00002 ; P16F84A.INC  Standard Header File, Version 2.00    Microchip Technology, Inc.
+                      00134         LIST
+2007   3FF1           00005                 __config _XT_OSC & _WDT_OFF & _PWRTE_ON & _CP_OFF
+                      00006 
+  00000027            00007 COUNT1  EQU             d'39'
+  00000026            00008 COUNT2  EQU             d'38'
+  00000025            00009 COUNT3  EQU             d'37'
+  00000028            00010 FLIKRCOUNT EQU  d'40'  ;;Used in flikr count
+  00000029            00011 COUNT1ms1       EQU     d'41'
+  0000002A            00012 TEMP1           EQU     d'42'   
+  00000024            00013 TOPRINT EQU             d'36'   ;Used By Char To Print
+  00000023            00014 DUMMY   EQU             d'35'   
+  00000022            00015 REGGY   EQU             d'34'   ;The register we like and use to know where we are      
+  00000021            00016 COUNT4  EQU             d'33'   ;Used to do the 10 second display
+  00000020            00017 TEMP    EQU             d'32'
+  0000001D            00018 CURSOR  EQU             d'29'
+  0000001E            00019 MINES   EQU             d'30'   ;SAVES the Number of mines
+  0000001F            00020 BOXES   EQU             d'31'   ;Saves the number of boxes opened without mines
+                      00021                 ORG     0x00
+0000   2???           00022                 GOTO    MAIN
+                      00023 
+                      00024                 ORG     0x04
+                      00025                 
+0004   180B           00026                 BTFSC   INTCON, RBIF    ;Interrupt for RB4 to RB7
+0005   2???           00027                 GOTO    PICK
+                      00028 
+0006   190B           00029                 BTFSC   INTCON,T0IF             ;timer for the 1 secon delay
+0007   2???           00030                 GOTO    TMR0int
+                      00031                 
+                      00032 
+                      00033 ;;;;;;;;;;;;;;;;;;;Iniatialization of the PIC;;;;;;;;;;;;;;;;;;;;;;;;
+0008   0185           00034 MAIN    CLRF    PORTA                   ;intialization 
+0009   0186           00035                 CLRF    PORTB
+000A   1683           00036                 BSF             STATUS,RP0              ;Go to Bank1
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+000B   0185           00037                 CLRF    TRISA                   ;RA4-RA0 as outputs
+000C   30F0           00038                 MOVLW   b'11110000'             ;Sets RB7-RB4 as inputs and RB3-RB1 as outputs to the LC
+                            D
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+000D   0086           00039                 MOVWF   TRISB
+000E   3087           00040                 MOVLW   b'10000111'             ;set Tmr0 as counter and set the prescalar as large as p
+                            ossible
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+000F   0081           00041                 MOVWF   OPTION_REG
+                      00042 ;;;;;;;;;;;;;;;;;;;Iniatialization of the PIC;;;;;;;;;;;;;;;;;;;;;;;;
+                      00043 
+                      00044 ;;;;;;;;;;;;;;;;;Initialize Count Variable;;;;;;;;;;;;;;
+0010   3098           00045                 movlw   d'152'                  ;For the 10 second delay
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  2
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0011   00A7           00046                 movwf   COUNT1
+0012   3000           00047                 movlw   h'00'
+0013   00A6           00048                 movwf   COUNT2
+0014   3034           00049                 movlw   h'34'
+0015   00A5           00050                 movwf   COUNT3
+0016   300C           00051                 MOVLW   d'12' ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+0017   00A1           00052                 MOVWF   COUNT4
+                      00053 ;;;;;;;;;;;;;;;;;Initialize Count Variable;;;;;;;;;;;;;;
+                      00054 
+0018   1283           00055                 BCF             STATUS,RP0 
+0019   178B           00056                 BSF             INTCON,GIE              ;set Genearl interupt flag to detect interrupts 
+                            we don't set tmro until hard playing mode
+001A   158B           00057                 BSF             INTCON,RBIE
+                      00058 
+                      00059 ;;;;;;;;;;;;;;;;Initializing the LCD and setting in in 4 bit mode;;;;;;;;;;;;;;;;;;;
+001B   2???           00060 LCDINT  CALL    DB40ms
+001C   3002           00061                 MOVLW   B'00010'                ;function set
+001D   0085           00062                 MOVWF   PORTA
+001E   2???           00063                 CALL    ET
+001F   3002           00064                 MOVLW   B'00010'
+0020   0085           00065                 MOVWF   PORTA
+0021   2???           00066                 CALL    ET
+0022   3008           00067                 MOVLW   B'01000'
+0023   0085           00068                 MOVWF   PORTA
+0024   2???           00069                 CALL    ET
+                      00070 
+0025   3000           00071                 MOVLW   B'00000'                ;Display on_off control
+0026   0085           00072                 MOVWF   PORTA
+0027   2???           00073                 CALL    ET
+0028   300F           00074                 MOVLW   B'01111'
+0029   0085           00075                 MOVWF   PORTA
+002A   2???           00076                 CALL    ET
+                      00077 
+002B   3000           00078                 MOVLW   B'00000'                ;CLEAR DISPLAY
+002C   0085           00079                 MOVWF   PORTA
+002D   2???           00080                 CALL    ET
+002E   3001           00081                 MOVLW   B'00001'
+002F   0085           00082                 MOVWF   PORTA
+0030   2???           00083                 CALL    ET
+                      00084 
+0031   3000           00085                 MOVLW   B'00000'                ;ENTRY MODE SET
+0032   0085           00086                 MOVWF   PORTA
+0033   2???           00087                 CALL    ET
+0034   3006           00088                 MOVLW   B'00110'
+0035   0085           00089                 MOVWF   PORTA
+0036   2???           00090                 CALL    ET
+                      00091 ;;;;;;;;;;;;;;;;Initializing the LCD and setting in in 4 bit mode;;;;;;;;;;;;;;;;;;;
+                      00092 
+0037   2???           00093                 CALL    WELCOME
+0038   2???           00094                 CALL    MAINMENU
+                      00095                 
+                      00096 
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  3
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0039   2???           00097 nothing GOTO    nothing ;endless loop so it still detects interrupts
+                      00098 
+                      00099 
+                      00100 ;#############################################################################################
+                      00101 ;######################Display Screens for LCD################################################
+                      00102 ;#############################################################################################
+                      00103 ;;;;;;;;;;;;;;;;WElcome Screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+003A                  00104 WELCOME
+003A   2???           00105                 CALL    CLEARSCREEN
+003B   01A2           00106                 CLRF    REGGY                   ;;I need to clear all the contents of reggy when I get b
+                            ack here
+003C   128B           00107                 BCF             INTCON,T0IE
+003D   300C           00108                 MOVLW   d'12'                   ;Reset the value of count fo the timer in hard mode
+003E   00A1           00109                 MOVWF   COUNT4
+                      00110 
+003F   3020           00111                 MOVLW   b'00100000'             ;Space
+0040   2???           00112                 CALL    PRNTCHR
+0041   3020           00113                 MOVLW   b'00100000'             ;Space
+0042   2???           00114                 CALL    PRNTCHR
+0043   3020           00115                 MOVLW   b'00100000'             ;Space
+0044   2???           00116                 CALL    PRNTCHR
+0045   3057           00117                 MOVLW   b'01010111'             ;W
+0046   2???           00118                 CAll    PRNTCHR
+0047   3045           00119                 MOVLW   b'01000101'             ;E
+0048   2???           00120                 CALL    PRNTCHR
+0049   304C           00121                 MOVLW   b'01001100'             ;L
+004A   2???           00122                 CALL    PRNTCHR
+004B   3043           00123                 MOVLW   b'01000011'             ;C
+004C   2???           00124                 CALL    PRNTCHR         
+004D   304F           00125                 MOVLW   b'01001111'             ;O
+004E   2???           00126                 CALL    PRNTCHR
+004F   304D           00127                 MOVLW   b'01001101'             ;M
+0050   2???           00128                 CALL    PRNTCHR
+0051   3045           00129                 MOVLW   b'01000101'             ;E
+0052   2???           00130                 CALL    PRNTCHR
+0053   2???           00131                 CALL    FLSHLED
+                      00132                 
+0054   2???           00133                 CALL    LOADMAP1                ;;MAP1 is loaded by default     
+0055   300B           00134                 MOVLW   d'11'
+0056   009F           00135                 MOVWF   BOXES                   ;;I have to set the value of the boxes that need to open
+                             back since 16-5mines is 11
+0057   3001           00136                 MOVLW   d'1'
+0058   009E           00137                 MOVWF   MINES
+0059   0008           00138                 RETURN
+                      00139 ;;;;;;;;;;;;;;;;WElcome Screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00140                 
+                      00141 ;;;;;;;;;;;;;;;Main Menu;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+005A                  00142 MAINMENU
+005A   2???           00143                 CALL    CLEARSCREEN
+005B   302A           00144                 MOVLW   b'00101010'             ;*
+005C   2???           00145                 CALL    PRNTCHR
+005D   304D           00146                 MOVLW   b'01001101'             ;M
+005E   2???           00147                 CALL    PRNTCHR         
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  4
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+005F   3041           00148                 MOVLW   b'01000001'             ;A
+0060   2???           00149                 CALL    PRNTCHR
+0061   3050           00150                 MOVLW   b'01010000'             ;P
+0062   2???           00151                 CALL    PRNTCHR
+                      00152                                 
+                      00153 
+0063   3040           00154                 MOVLW   h'40'                   ;Move to second line
+0064   009D           00155                 MOVWF   CURSOR
+0065   2???           00156                 CALL    SETCURSORLCD
+                      00157 
+0066   3020           00158                 MOVLW   b'00100000'             ;Space
+0067   2???           00159                 CALL    PRNTCHR
+0068   3050           00160                 MOVLW   b'01010000'             ;P
+0069   2???           00161                 CALL    PRNTCHR
+006A   304C           00162                 MOVLW   b'01001100'             ;L
+006B   2???           00163                 CALL    PRNTCHR                 
+006C   3041           00164                 MOVLW   b'01000001'             ;A
+006D   2???           00165                 CALL    PRNTCHR
+006E   3059           00166                 MOVLW   b'01011001'             ;Y
+006F   2???           00167                 CALL    PRNTCHR 
+0070   2???           00168                 CALL    RESETCURSOR
+                      00169                 
+0071   1022           00170                 BCF             REGGY,0                 ;Set state to 00 to indicate that we are in the 
+                            menu page 
+0072   10A2           00171                 BCF             REGGY,1 
+0073   0008           00172                 RETURN  
+                      00173 ;;;;;;;;;;;;;;;Main Menu;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00174 
+                      00175 
+                      00176 ;;Prints the Map Screeen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+0074                  00177 PRINTMAPSMENU
+0074   2???           00178                 CALL    CLEARSCREEN             ;I need to clear screen before I do anything
+0075   3050           00179                 MOVLW   b'01010000'             ;P
+0076   2???           00180                 CALL    PRNTCHR
+0077   3052           00181                 MOVLW   b'01010010'             ;R
+0078   2???           00182                 CALL    PRNTCHR
+0079   3045           00183                 MOVLW   b'01000101'             ;E
+007A   2???           00184                 CALL    PRNTCHR
+007B   3053           00185                 MOVLW   b'01010011'             ;S
+007C   2???           00186                 CALL    PRNTCHR
+007D   3053           00187                 MOVLW   b'01010011'             ;S
+007E   2???           00188                 CALL    PRNTCHR
+                      00189 
+007F   3020           00190                 MOVLW   b'00100000'             ;Space
+0080   2???           00191                 CALL    PRNTCHR
+                      00192 
+0081   304C           00193                 MOVLW   b'01001100'             ;L
+0082   2???           00194                 CALL    PRNTCHR
+                      00195                 
+0083   3020           00196                 MOVLW   b'00100000'             ;Space
+0084   2???           00197                 CALL    PRNTCHR
+                      00198 
+0085   3052           00199                 MOVLW   b'01010010'             ;R
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  5
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0086   2???           00200                 CALL    PRNTCHR
+                      00201 
+0087   1422           00202                 BSF             REGGY,0                 ;Set state to 01 to indicate that we are in the 
+                            Map Page 
+0088   10A2           00203                 BCF             REGGY,1
+                      00204                 
+                      00205                 
+0089   0008           00206                 RETURN
+                      00207 ;;Prints the Map Screeen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00208 
+                      00209 ;;Prints the difficulty screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+008A                  00210 PRINTDIFFICULTY
+008A   2???           00211                 CALL    CLEARSCREEN             ;I need to clear screen before I do anything
+008B   302A           00212                 MOVLW   b'00101010'             ;*
+008C   2???           00213                 CALL    PRNTCHR
+                      00214                 
+008D   3045           00215                 MOVLW   b'01000101'             ;E
+008E   2???           00216                 CALL    PRNTCHR
+008F   3041           00217                 MOVLW   b'01000001'             ;A
+0090   2???           00218                 CALL    PRNTCHR
+0091   3053           00219                 MOVLW   b'01010011'             ;S
+0092   2???           00220                 CALL    PRNTCHR
+0093   3059           00221                 MOVLW   b'01011001'             ;Y
+0094   2???           00222                 CALL    PRNTCHR
+                      00223 
+0095   3020           00224                 MOVLW   b'00100000'             ;Space
+0096   2???           00225                 CALL    PRNTCHR
+                      00226 
+0097   304D           00227                 MOVLW   b'01001101'             ;M
+0098   2???           00228                 CALL    PRNTCHR 
+0099   3045           00229                 MOVLW   b'01000101'             ;E
+009A   2???           00230                 CALL    PRNTCHR
+009B   3044           00231                 MOVLW   b'01000100'             ;D
+009C   2???           00232                 CALL    PRNTCHR
+                      00233                 
+009D   3020           00234                 MOVLW   b'00100000'             ;Space
+009E   2???           00235                 CALL    PRNTCHR
+                      00236 
+009F   3048           00237                 MOVLW   b'01001000'             ;H
+00A0   2???           00238                 CALL    PRNTCHR
+00A1   3041           00239                 MOVLW   b'01000001'             ;A
+00A2   2???           00240                 CALL    PRNTCHR
+00A3   3052           00241                 MOVLW   b'01010010'             ;R
+00A4   2???           00242                 CALL    PRNTCHR
+00A5   3044           00243                 MOVLW   b'01000100'             ;D
+                      00244 
+00A6   2???           00245                 CALL    PRNTCHR
+00A7   2???           00246                 CALL    RESETCURSOR             ; Put cursor on the first part 00
+00A8   0008           00247                 RETURN
+                      00248 ;;Prints the difficulty screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00249 
+                      00250 ;;Prints WIN screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+00A9                  00251 PRINTWIN        
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  6
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00A9   2???           00252                 CALL    CLEARSCREEN             ;I need to Clear Screen
+00AA   3057           00253                 MOVLW   b'01010111'             ;W
+00AB   2???           00254                 CALL    PRNTCHR
+00AC   3049           00255                 MOVLW   b'01001001'             ;I
+00AD   2???           00256                 CALL    PRNTCHR
+00AE   304E           00257                 MOVLW   b'01001110'             ;N
+00AF   2???           00258                 CALL    PRNTCHR
+00B0   0008           00259                 RETURN
+                      00260 ;;Prints WIN screen;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00261 
+                      00262 ;;Prints Loss Screen######################################
+00B1                  00263 PRINTLOSS
+00B1   2???           00264                 CALL    CLEARSCREEN
+00B2   304C           00265                 MOVLW   b'01001100'             ;L
+00B3   2???           00266                 CALL    PRNTCHR
+00B4   304F           00267                 MOVLW   b'01001111'             ;O
+00B5   2???           00268                 CALL    PRNTCHR
+00B6   3053           00269                 MOVLW   b'01010011'             ;S
+00B7   2???           00270                 CALL    PRNTCHR
+00B8   3053           00271                 MOVLW   b'01010011'             ;S
+00B9   2???           00272                 CALL    PRNTCHR
+00BA   0008           00273                 RETURN
+                      00274 ;;Prints Loss Screen######################################
+                      00275 
+                      00276 ;;Print the Playmode Screen###############################
+00BB                  00277 PRINTPLAYMODE
+00BB   2???           00278                 CALL    CLEARSCREEN             ;I have to clear the LCD first
+00BC   2???           00279                 CALL    PRINTSQUARES    ;print 8 squares
+                      00280                 
+00BD   3040           00281                 MOVLW   h'40'                   ;Move to second line
+00BE   009D           00282                 MOVWF   CURSOR
+00BF   2???           00283                 CALL    SETCURSORLCD
+                      00284 
+00C0   2???           00285                 CALL    PRINTSQUARES
+                      00286                 
+00C1   300F           00287                 MOVLW   h'0F'                   
+00C2   009D           00288                 MOVWF   CURSOR
+00C3   2???           00289                 CALL    SETCURSORLCD
+                      00290 
+00C4   1A22           00291                 BTFSC   REGGY, 4                ;If Reggy bit 4 is 1 then we are in easy mode 
+00C5   3045           00292                 MOVLW   b'01000101'             ;E
+                      00293 
+00C6   19A2           00294                 BTFSC   REGGY,3         ;If Reggy bit 3 is 1 the we are in medium mode
+00C7   304D           00295                 MOVLW   b'01001101'             ;M
+                      00296                 
+00C8   1922           00297                 BTFSC   REGGY,2         ;IF Reggy bit 2 is 1 then we are in hard mode
+00C9   3048           00298                 MOVLW   b'01001000'             ;H
+                      00299                 
+00CA   2???           00300                 CALL    PRNTCHR 
+                      00301 
+00CB   1922           00302                 BTFSC   REGGY,2         ;IF Reggy bit 2 is 1 then we are in hard mode   
+00CC   2???           00303                 CALL    PRINTTIME               ; In hard mode we have to print the time
+                      00304                 
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  7
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00CD   2???           00305                 CALL    RESETCURSOR             ; Put cursor on the first part 00
+00CE   0008           00306                 RETURN
+                      00307 ;;Print the Playmode Screen###############################
+                      00308 
+                      00309 ;;PRINT 8 squares on a line;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+00CF                  00310 PRINTSQUARES
+00CF   30DB           00311                 MOVLW   b'11011011'             ;Prints the square
+00D0   2???           00312                 CALL    PRNTCHR
+00D1   30DB           00313                 MOVLW   b'11011011'             ;Prints the square
+00D2   2???           00314                 CALL    PRNTCHR
+00D3   30DB           00315                 MOVLW   b'11011011'             ;Prints the square
+00D4   2???           00316                 CALL    PRNTCHR
+00D5   30DB           00317                 MOVLW   b'11011011'             ;Prints the square
+00D6   2???           00318                 CALL    PRNTCHR
+00D7   30DB           00319                 MOVLW   b'11011011'             ;Prints the square
+00D8   2???           00320                 CALL    PRNTCHR
+00D9   30DB           00321                 MOVLW   b'11011011'             ;Prints the square
+00DA   2???           00322                 CALL    PRNTCHR
+00DB   30DB           00323                 MOVLW   b'11011011'             ;Prints the square
+00DC   2???           00324                 CALL    PRNTCHR
+00DD   30DB           00325                 MOVLW   b'11011011'             ;Prints the square
+00DE   2???           00326                 CALL    PRNTCHR
+00DF   0008           00327                 RETURN
+                      00328 ;;PRINT 8 squares on a line;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00329 
+                      00330 ;;Print Time remaining;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+00E0                  00331 PRINTTIME
+00E0   304A           00332                 MOVLW   h'4A'                   ;I'm going to second line 10th character space
+00E1   009D           00333                 MOVWF   CURSOR
+00E2   2???           00334                 CALL    SETCURSORLCD
+00E3   168B           00335                 BSF             INTCON,T0IE
+                      00336                 
+00E4   3052           00337                 MOVLW   b'01010010'             ;R
+00E5   2???           00338                 CALL    PRNTCHR
+                      00339 
+00E6   3045           00340                 MOVLW   b'01000101'             ;E
+00E7   2???           00341                 CALL    PRNTCHR
+                      00342                 
+00E8   304D           00343                 MOVLW   b'01001101'             ;M
+00E9   2???           00344                 CALL    PRNTCHR
+                      00345                 
+00EA   3031           00346                 MOVLW   b'00110001'             ;1
+00EB   2???           00347                 CALL    PRNTCHR         
+                      00348                 
+00EC   3032           00349                 MOVLW   b'00110010'             ;2
+00ED   2???           00350                 CALL    PRNTCHR         
+                      00351                 
+00EE   3030           00352                 MOVLW   b'00110000'             ;0
+00EF   2???           00353                 CALL    PRNTCHR
+                      00354 
+00F0   0008           00355                 RETURN
+                      00356 ;;Print Time remaining;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00357 
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  8
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00358 ;;;;;;;;;;;;;;;;;;Printing the actual contents under the boxes;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+00F1                  00359 PRINTFULLMAP
+00F1   2???           00360                 CALL    CLEARSCREEN             ;;;I need to clear the screen to start writting on it an
+                            d now the cursor is at                                          ;;0x00
+00F2   300C           00361                 MOVLW   d'12'
+00F3   0084           00362                 MOVWF   FSR
+                      00363                         
+                      00364                 
+00F4   3009           00365                 MOVLW   d'9'            ;;I want to do it 8 times
+00F5   00A0           00366                 MOVWF   TEMP
+00F6   2???           00367                 CALL    LOAD
+                      00368                 
+                      00369                 ;;Go To next line
+                      00370                 
+00F7   3040           00371                 MOVLW   h'40'                   ;Move to second line
+00F8   009D           00372                 MOVWF   CURSOR
+00F9   2???           00373                 CALL    SETCURSORLCD    
+                      00374                 
+00FA   3009           00375                 MOVLW   d'9'            ;;I want to do it 8 times for the second line
+00FB   00A0           00376                 MOVWF   TEMP
+00FC   2???           00377                 CALL    LOAD            ;;Load a full line of contents
+00FD   0008           00378                 RETURN
+                      00379 
+00FE   0BA0           00380 LOAD    DECFSZ  TEMP,F          ;Save it in itself
+00FF   2???           00381                 GOTO    SMTHNG
+0100   2???           00382                 GOTO    STOP            ; When temp is 0 that means we already printed 8 of these 
+                      00383 
+0101   1B80           00384 SMTHNG  BTFSC   INDF,7          ;;I need to Clear the flag bit So I check if there Is a flag bit        
+0102   1380           00385                 BCF             INDF,7          ;;Reset flag bit to 0
+0103   0800           00386                 MOVFW   INDF
+0104   2???           00387                 CALL    PRNTCHR
+Message[305]: Using default destination of 1 (file).
+0105   0A84           00388                 INCF    FSR
+0106   2???           00389                 GOTO    LOAD            ;;Load a full line of contents
+                      00390                 
+0107   0008           00391 STOP    RETURN
+                      00392 ;;;;;;;;;;;;;;;;;;Printing the actual contents under the boxes;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00393 
+                      00394 ;#############################################################################################
+                      00395 ;######################Display Screens for LCD################################################
+                      00396 ;#############################################################################################
+                      00397 
+                      00398 
+                      00399 ;#############################################################################################
+                      00400 ;######################BUZZER AND LED Functions###############################################
+                      00401 ;#############################################################################################
+                      00402 ;;;;;;;;;;;;;;;LED Flashing Pattern;;;;;;;;;;;;;;;;;;;;;;;;;;
+0108   3005           00403 FLSHLED MOVLW   d'5'
+0109   00A8           00404                 MOVWF   FLIKRCOUNT
+010A   1506           00405 FLKR    BSF             PORTB,2                 ;Turn On green LED
+010B   2???           00406                 CALL    DB40ms                  ;Wait 40ms
+010C   1106           00407                 BCF             PORTB,2                 ;Turn Off green LED
+010D   1586           00408                 BSF             PORTB,3                 ;Turn On red LED
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE  9
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+010E   2???           00409                 CALL    DB40ms                  ;Wait 80ms
+010F   2???           00410                 CALL    DB40ms
+0110   1186           00411                 BCF             PORTB,3                 ;Turn Off Red LED
+0111   0BA8           00412                 DECFSZ  FLIKRCOUNT,F            ;Do the pattern 5 times
+0112   2???           00413                 GOTO    FLKR
+0113   0008           00414                 RETURN
+                      00415 ;;;;;;;;;;;;;;;LED Flashing Pattern;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00416 
+                      00417 ;;;;;;;;;;;;;;;Turn Buzz On For detecting mine;;;;;;;;;;;;;;;
+0114   1406           00418 BUZZ    BSF             PORTB,0                 ;TURN The Buzzer on
+0115   2???           00419                 CALL    DB40ms                  ;WAit 80ms
+0116   2???           00420                 CALL    DB40ms
+0117   1006           00421                 BCF             PORTB,0                 ;Turn the buzzzer OFF
+0118   0008           00422                 RETURN
+                      00423 ;;;;;;;;;;;;;;;Turn Buzz On For detecting mine;;;;;;;;;;;;;;;
+                      00424 ;#############################################################################################
+                      00425 ;######################BUZZER AND LED Functions###############################################
+                      00426 ;#############################################################################################
+                      00427 
+                      00428 
+                      00429 ;#############################################################################################
+                      00430 ;####################USEFULL Functions that have been used frequently#########################
+                      00431 ;#############################################################################################          
+                      00432 
+                      00433 ;;;;;;;;;;;;;;;;;Function to PRint CHaracter;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+0119   00A4           00434 PRNTCHR MOVWF   TOPRINT         ;Character must be saved in W before entering the function
+011A   0E24           00435                 SWAPF   TOPRINT,0
+011B   390F           00436                 ANDLW   b'00001111'     ;take the upper 4 bits of the character
+011C   3810           00437                 IORLW   b'00010000'     ;need to set the RS bit to 1 so it woud take
+011D   0085           00438                 MOVWF   PORTA
+011E   2???           00439                 CALL    ET
+011F   0824           00440                 MOVFW   TOPRINT         ;I need to get back my character
+                      00441                 
+0120   390F           00442                 ANDLW   b'000001111'    ;take the lower 4 bits of the character
+0121   3810           00443                 IORLW   b'000010000'
+0122   0085           00444                 MOVWF   PORTA
+0123   2???           00445                 CALL    ET
+0124   0008           00446                 RETURN
+                      00447 ;;;;;;;;;;;;;;;;;Function to PRint CHaracter;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00448 
+                      00449 
+                      00450 
+                      00451 ;;;;;;A delay of 1ms;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+0125   30F9           00452 DB1ms   MOVLW   d'249'
+0126   00A9           00453                 MOVWF   COUNT1ms1
+                      00454         
+                      00455 
+0127   0BA9           00456 LOOP1ms DECFSZ  COUNT1ms1,F
+0128   2???           00457                 GOTO    LOOP1ms
+                      00458 
+0129   0008           00459                 RETURN
+                      00460 ;;;;;;A delay of 1ms;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00461 
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 10
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00462 ;;;;;;A delay of 40ms;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+012A   0FA6           00463 DB40ms  INCFSZ  COUNT2, F
+012B   2???           00464                 GOTO    DB40ms
+012C   0BA5           00465                 DECFSZ  COUNT3, F
+012D   2???           00466                 GOTO    DB40ms
+012E   0008           00467                 return
+                      00468 ;;;;;;A delay of 40ms;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00469 
+                      00470 ;;;;;;;;Function to toggle the enable bit;;;;;;;;;;;;;;;;;;;;;;;;;;;
+012F   1486           00471 ET              BSF             PORTB,1
+0130   0000           00472                 NOP
+0131   1086           00473                 BCF             PORTB,1
+0132   2???           00474                 CALL    DB1ms
+0133   2???           00475                 CALL    DB1ms
+0134   2???           00476                 CALL    DB1ms
+0135   2???           00477                 CALL    DB1ms
+0136   2???           00478                 CALL    DB1ms
+0137   2???           00479                 CALL    DB1ms
+0138   0008           00480                 RETURN
+                      00481 
+                      00482 ;;;;;;;;Function to toggle the enable bit;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00483 
+                      00484 ;;;Clears the screen and sets the cursor back to 0x00;;;;;;;;;;;;;;;;;;;;;;
+0139                  00485 CLEARSCREEN
+0139   3000           00486                 MOVLW   b'00000'  ;;;Rs bit must be set to zero and RS, R/W, DB7, DB6, DB5, DB4 must be 
+                            0
+013A   0085           00487                 MOVWF   PORTA
+013B   2???           00488                 CALL    ET
+013C   3001           00489                 MOVLW   b'00001'        ;RS must be 0 and DB3, DB2, DB1 are 0 but DB0 is 1
+013D   0085           00490                 MOVWF   PORTA
+013E   2???           00491                 CALL    ET
+013F   0008           00492                 RETURN
+                      00493 ;;;Clears the screen and sets the cursor back to 0x00;;;;;;;;;;;;;;;;;;;;;;     
+                      00494 
+                      00495 
+                      00496 ;This function below uses the value in register cursor to set the address of the lcd;;;;
+0140                  00497 SETCURSORLCD
+0140   0E1D           00498                 SWAPF   CURSOR, 0       ; W <-- CURSOR SWAPPED (SEND MSB FIRST => NEED TO FLIP CURSOR)
+0141   3907           00499                 ANDLW   b'00000111'
+0142   3808           00500                 IORLW   b'00001000'     
+0143   0085           00501                 MOVWF   PORTA           ; PORTA <-- CURSOR
+                      00502                 
+0144   2???           00503                 CALL    ET                      ; SENDS 0+[CURSOR[7,6,5,4]
+0145   081D           00504                 MOVFW           CURSOR
+0146   390F           00505                 ANDLW           b'00001111'                                     ;; take the lower bits i
+                            n W
+0147   0085           00506                 MOVWF           PORTA
+0148   2???           00507                 CALL    ET                      ; SENDS 0+[CURSOR[3,2,1,0]
+                      00508 
+0149   0008           00509                 RETURN                  ; VOILA! Address sent to LCD!
+                      00510 ;This function below uses the value in register cursor to set the address of the lcd;;;;
+                      00511 
+                      00512 ;;This function resets the the cursor to 0x00;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 11
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+014A                  00513 RESETCURSOR
+014A   3000           00514                 MOVLW h'00'
+014B   009D           00515                 MOVWF CURSOR
+014C   2???           00516                 CALL SETCURSORLCD
+014D   0008           00517                 RETURN
+                      00518 ;;This function resets the the cursor to 0x00;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00519 ;#############################################################################################
+                      00520 ;####################USEFULL Functions that have been used frequently#########################
+                      00521 ;#############################################################################################
+                      00522 
+                      00523         
+                      00524 
+                      00525 ;#############################################################################################
+                      00526 ;####################Interupt subroutine that are called and end in retfie####################
+                      00527 ;#############################################################################################  
+                      00528 
+                      00529 ;;;;;The interupt subroutine called by tmr0 and the timer display used in hard mode;;;;;;;;;;
+014E   0BA7           00530 TMR0int DECFSZ  COUNT1, F       
+014F   2???           00531                 GOTO    ret
+0150   3098           00532                 MOVLW   d'152'          ;For 10 seconds 
+0151   00A7           00533                 MOVWF   COUNT1
+                      00534 
+0152   0BA1           00535                 DECFSZ  COUNT4,F        ;COUNT4 hold the value 11 for the timer
+0153   2???           00536                 GOTO    TIMER
+                      00537                 
+0154   300C           00538                 MOVLW   d'12' ;12 since timer starts at 120 and we are changing every 10 seconds
+0155   00A1           00539                 MOVWF   COUNT4
+                      00540                 
+                      00541                 ;;I need to check if we are in playing mode and hard mode is on
+                      00542                 
+0156   1D22           00543                 BTFSS   REGGY,2         ;;CHECK if Hard mode is on
+0157   2???           00544                 GOTO    ret
+                      00545                 
+                      00546                 
+                      00547                 ;;I need to check if in playing mode
+0158   1CA2           00548                 BTFSS   REGGY,1         ;;
+0159   2???           00549                 GOTO    ret
+015A   1C22           00550                 BTFSS   REGGY,0
+015B   2???           00551                 GOTO    ret
+015C   2???           00552                 CALL    LOSSSQN 
+                      00553 
+015D   110B           00554 ret             BCF             INTCON,T0IF
+015E   0181           00555                 CLRF    TMR0
+015F   0009           00556                 RETFIE
+                      00557 
+                      00558 ;;;;;;;;;;;;;TO Change the timer;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+0160                  00559 TIMER           ;Check if hard mode and playing mode state
+0160   1D22           00560                 BTFSS   REGGY,2         ;;CHECK if Hard mode is on
+0161   2???           00561                 GOTO    JUMP
+                      00562                 ;;I need to check if in playing mode
+0162   1CA2           00563                 BTFSS   REGGY,1         ;;
+0163   2???           00564                 GOTO    JUMP
+0164   1C22           00565                 BTFSS   REGGY,0
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 12
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0165   2???           00566                 GOTO    JUMP
+                      00567                 
+                      00568                 ;I need to save the cursor in temp first
+                      00569 
+0166   081D           00570                 MOVFW   CURSOR
+                      00571         
+0167   00A0           00572                 MOVWF   TEMP            ;Temp holds our current cursor location
+0168   00A0           00573                 MOVWF   TEMP    
+                      00574                 ;Know I need to intialize the cursor to change the values of the time
+0169   304D           00575                 MOVLW   h'4D'           ;Move to the postion where 1 is diplayed on the screen
+016A   009D           00576                 MOVWF   CURSOR
+016B   2???           00577                 CALL    SETCURSORLCD
+                      00578                 
+                      00579                 ;;I need to check the digits I need to display
+016C   1DA1           00580                 BTFSS   COUNT4,3        ;; The common thing between 10 and 11 is that they have 101x
+016D   2???           00581                 GOTO    ONEDIGIT
+                      00582                 
+016E   1921           00583                 BTFSC   COUNT4,2
+016F   2???           00584                 GOTO    ONEDIGIT
+                      00585                 
+0170   1CA1           00586                 BTFSS   COUNT4,1
+0171   2???           00587                 GOTO    ONEDIGIT
+                      00588                 
+0172   3031           00589                 MOVLW   b'00110001'             ;;Printing the l        
+0173   2???           00590                 CALL    PRNTCHR 
+                      00591                 
+0174   0821           00592                 MOVFW   COUNT4
+                      00593                 
+                      00594 
+0175   3A3A           00595                 XORLW   b'00111010'             ;;Prints Either 1 or 0 depending on the last bit of COUN
+                            T4
+0176   2???           00596                 CALL    PRNTCHR
+0177   2???           00597                 GOTO    SKIP
+0178                  00598 ONEDIGIT
+0178   3020           00599                 MOVLW   b'00100000'
+0179   2???           00600                 CALL    PRNTCHR
+                      00601 
+017A   0821           00602                 MOVFW   COUNT4
+017B   3830           00603                 IORLW   b'00110000'     ;;Since all the number start with a the sequence 0011
+017C   2???           00604                 CALL    PRNTCHR         ;Prints the value in COUNT4
+                      00605                 
+                      00606                                                                                                         
+                                                                    ;;I neeed to put back the cursor in its old position
+017D   0820           00607 SKIP    MOVFW   TEMP            
+017E   009D           00608                 MOVWF   CURSOR
+017F   2???           00609                 CALL    SETCURSORLCD
+0180   2???           00610 JUMP    GOTO    ret
+                      00611 ;;;;;;;;;;;;;TO Change the timer;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00612 ;;;;;The interupt subroutine called by tmr0 and the timer display used in hard mode;;;;;;;;;;
+                      00613 
+                      00614 
+                      00615 ;;;Picks the interupt routine for RBIF;;;;;;;;;;;
+0181   2???           00616 PICK    CALL    DB1ms
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 13
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0182   2???           00617                 CALL    DB1ms
+0183   1F86           00618                 BTFSS   PORTB,7         ;Checks RB7 is set then we go to right subroutine       
+0184   2???           00619                 CALL    RIGHT
+                      00620 
+0185   1F06           00621                 BTFSS   PORTB,6         ;Checks RB6 is set then we go to the left subroutine
+0186   2???           00622                 CALL    LEFT
+                      00623 
+0187   1E86           00624                 BTFSS   PORTB,5         ;Checks RB5 is set then we go to the up-DOWN subroutine
+0188   2???           00625                 CALL    U_D
+                      00626 
+0189   1E06           00627                 BTFSS   PORTB,4         ;Checks RB4 is set then we go to the enter subroutine
+018A   2???           00628                 CALL    Enter
+                      00629                 
+018B   100B           00630                 BCF             INTCON,RBIF     ;We have to reset the interrupt flag
+018C   0009           00631                 RETFIE
+                      00632 ;;;Picks the interupt routine;;;;;;;;;;;
+                      00633 
+                      00634 ;#############################################################################################
+                      00635 ;####################Interupt subroutine that are called and end in retfie####################
+                      00636 ;#############################################################################################
+                      00637                  
+                      00638 
+                      00639 ;#############################################################################################
+                      00640 ;####################The WIN and LOSS Sequence################################################
+                      00641 ;#############################################################################################
+                      00642 ;;;;;The Sequence that should be down when we have a loss;;;;;;;;;;;;;
+018D                  00643 LOSSSQN                 ;;;(Loss Sequence)
+018D   1586           00644                 BSF             PORTB,3         ;TURN RED LED ON
+018E   2???           00645                 CALL    PRINTLOSS
+018F   2???           00646                 CALL    DB40ms          ;CALL 
+0190   2???           00647                 CALL    DB40ms          ;DElAY of 80ms
+0191   2???           00648                 CALL    DB40ms
+0192   2???           00649                 CALL    DB40ms                  ;;DElAY of 120ms
+0193   2???           00650                 CALL    DB40ms
+0194   2???           00651                 CALL    DB40ms
+0195   2???           00652                 CALL    PRINTFULLMAP    ;Print 
+0196   2???           00653                 CALL    DB40ms
+0197   2???           00654                 CALL    DB40ms          
+0198   2???           00655                 CALL    DB40ms
+0199   2???           00656                 CALL    DB40ms                  ;;DElAY of 120ms
+019A   2???           00657                 CALL    DB40ms
+019B   2???           00658                 CALL    DB40ms
+019C   2???           00659                 CALL    WELCOME         ;This should Go to welcome and start with the sequence again(Pro
+                            blem has no return)
+019D   2???           00660                 CALL    MAINMENU
+019E   0008           00661                 RETURN
+                      00662 ;;;;;The Sequence that should be down when we have a loss;;;;;;;;;;;;;
+                      00663 
+                      00664 ;;;;;;;;;;;;;;;;;;;The Sequence of Displays we get when we win;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+019F   1506           00665 WINSQN  BSF             PORTB,2                 ;Green LED must be on
+01A0   2???           00666                 CALL    PRINTWIN
+01A1   2???           00667                 CALL    DB40ms                  ;CALL a 120ms Delay
+01A2   2???           00668                 CALL    DB40ms
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 14
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+01A3   2???           00669                 CALL    DB40ms
+01A4   2???           00670                 CALL    DB40ms                  ;CALL a 120ms Delay
+01A5   2???           00671                 CALL    DB40ms
+01A6   2???           00672                 CALL    DB40ms
+01A7   2???           00673                 CALL    PRINTFULLMAP    ;Print 
+01A8   2???           00674                 CALL    DB40ms                  ;;DElAY of 120ms
+01A9   2???           00675                 CALL    DB40ms
+01AA   2???           00676                 CALL    DB40ms
+01AB   2???           00677                 CALL    DB40ms                  ;;DElAY of 120ms
+01AC   2???           00678                 CALL    DB40ms
+01AD   2???           00679                 CALL    DB40ms                  
+01AE   2???           00680                 CALL    WELCOME
+01AF   1106           00681                 BCF             PORTB,2
+01B0   2???           00682                 CALL    MAINMENU
+01B1   0008           00683                 RETURN                  
+                      00684 ;;;;;;;;;;;;;;;;;;;The Sequence of Displays we get when we win;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00685 
+                      00686 ;#############################################################################################
+                      00687 ;####################The WIN and LOSS Sequence################################################
+                      00688 ;#############################################################################################
+                      00689 
+                      00690 
+                      00691 ;#############################################################################################
+                      00692 ;#################################LOADING MAPS################################################
+                      00693 ;#############################################################################################
+                      00694 
+                      00695 ;;;;;;;;;;;;;;;;;Loads the contents of map 1 into its qualifying registers;;;;;;;;;;;
+01B2                  00696 LOADMAP1 ;;(something like 16 lines)
+01B2   300C           00697                 movlw   d'12'
+01B3   0084           00698                 movwf   FSR                     ;;Intialize the FSR to the 12th register
+01B4   3030           00699                 movlw   b'00110000'             ;;Loads 0 into first block
+01B5   2???           00700                 call    InDrct
+01B6   3031           00701                 movlw   b'00110001'             ;;Loads 1 in the 2nd block
+01B7   2???           00702                 call    InDrct
+01B8   302A           00703                 movlw   b'00101010'             ;;Loads (*) mine in 3rdblock
+01B9   2???           00704                 call    InDrct
+01BA   3032           00705                 movlw   b'00110010'             ;;Loads 2 in the 4th block
+01BB   2???           00706                 call    InDrct  
+01BC   3032           00707                 movlw   b'00110010'             ;;Loads 2 in the 5th block
+01BD   2???           00708                 call    InDrct
+01BE   302A           00709                 movlw   b'00101010'             ;;Loads (*) mine in 6th block
+01BF   2???           00710                 call    InDrct
+01C0   3033           00711                 movlw   b'00110011'             ;;Loads 3 in the 7th block
+01C1   2???           00712                 call    InDrct
+01C2   302A           00713                 movlw   b'00101010'             ;;Loads (*) mine in 8th block
+01C3   2???           00714                 call    InDrct
+                      00715         
+                      00716                 ;;;Second line
+01C4   3030           00717                 movlw   b'00110000'             ;;Loads 0 into first block
+01C5   2???           00718                 call    InDrct
+01C6   3031           00719                 movlw   b'00110001'             ;;Loads 1 in the 2nd block
+01C7   2???           00720                 call    InDrct
+01C8   3031           00721                 movlw   b'00110001'             ;;Loads 1 in the 3rd block
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 15
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+01C9   2???           00722                 call    InDrct
+01CA   3032           00723                 movlw   b'00110010'             ;;Loads 2 in the 4th block
+01CB   2???           00724                 call    InDrct
+01CC   302A           00725                 movlw   b'00101010'             ;;Loads (*) mine in 5th block
+01CD   2???           00726                 call    InDrct
+01CE   3032           00727                 movlw   b'00110010'             ;;Loads 2 in the 6th block
+01CF   2???           00728                 call    InDrct
+01D0   3033           00729                 movlw   b'00110011'             ;;Loads 3 in the 7th block
+01D1   2???           00730                 call    InDrct
+01D2   302A           00731                 movlw   b'00101010'             ;;Loads (*) mine in 8th block
+01D3   2???           00732                 call    InDrct
+                      00733 
+01D4   300C           00734                 movlw   d'12'
+01D5   0084           00735                 movwf   FSR                     ;;Intialize the FSR Back to register 12 since in playing
+                             mode we are goinng to start here 
+01D6   0008           00736                 RETURN
+                      00737 ;;;;;;;;;;;;;;;;;Loads the contents of map 1(The default map) into its qualifying registers;;;;;;;;;;;
+                      00738 
+                      00739 ;;;;;;;;;;;;;;;;;Loads the contents of map 2(Our Own Map) into its qualifying registers;;;;;;;;;;;;;;;
+01D7                  00740 LOADMAP2
+01D7   300C           00741                 movlw   d'12'
+01D8   0084           00742                 movwf   FSR                     ;;Intialize the FSR to the 12th register
+                      00743                 
+                      00744                 ;;First Line
+01D9   3032           00745                 movlw   b'00110010'             ;;Loads 2 in the 1st block
+01DA   2???           00746                 call    InDrct
+01DB   302A           00747                 movlw   b'00101010'             ;;Loads (*) mine in 2nd block
+01DC   2???           00748                 call    InDrct
+01DD   3033           00749                 movlw   b'00110011'             ;;Loads 3 in the 3rd block
+01DE   2???           00750                 call    InDrct
+01DF   302A           00751                 movlw   b'00101010'             ;;Loads (*) mine in 4th block
+01E0   2???           00752                 call    InDrct
+01E1   3033           00753                 movlw   b'00110011'             ;;Loads 3 in the 5th block
+01E2   2???           00754                 call    InDrct
+01E3   302A           00755                 movlw   b'00101010'             ;;Loads (*) mine in 6th block
+01E4   2???           00756                 call    InDrct  
+01E5   3032           00757                 movlw   b'00110010'             ;;Loads 2 in the 7th block
+01E6   2???           00758                 call    InDrct
+01E7   3030           00759                 movlw   b'00110000'             ;;Loads 0 into 8th block
+01E8   2???           00760                 call    InDrct
+                      00761         
+                      00762                 ;;Second Line
+01E9   3032           00763                 movlw   b'00110010'             ;;Loads 2 in the 1stblock
+01EA   2???           00764                 call    InDrct
+01EB   302A           00765                 movlw   b'00101010'             ;;Loads (*) mine in 2nd block
+01EC   2???           00766                 call    InDrct  
+01ED   3033           00767                 movlw   b'00110011'             ;;Loads 3 in the 3rd block
+01EE   2???           00768                 call    InDrct
+01EF   3031           00769                 movlw   b'00110001'             ;;Loads 1 in the 4th block
+01F0   2???           00770                 call    InDrct
+01F1   3033           00771                 movlw   b'00110011'             ;;Loads 3 in the 5th block
+01F2   2???           00772                 call    InDrct
+01F3   302A           00773                 movlw   b'00101010'             ;;Loads (*) mine in 6th block
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 16
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+01F4   2???           00774                 call    InDrct
+01F5   3032           00775                 movlw   b'00110010'             ;;Loads 2 in the 7th block
+01F6   2???           00776                 call    InDrct
+01F7   3030           00777                 movlw   b'00110000'             ;;Loads 0 into 8th block
+01F8   2???           00778                 call    InDrct
+                      00779 
+                      00780 
+01F9   300C           00781                 movlw   d'12'
+01FA   0084           00782                 movwf   FSR                     ;;Intialize the FSR Back to register 12 since in playing
+                             mode we are goinng to start here 
+01FB   0008           00783                 RETURN
+                      00784 ;;;;;;;;;;;;;;;;;Loads the contents of map 2(Our Own Map) into its qualifying registers;;;;;;;;;;;;;;;
+                      00785 
+                      00786 ;;;a function that helps reduce the number of lines od code;;;;;;;;;;;;;;
+01FC   0080           00787 InDrct  movwf   INDF
+Message[305]: Using default destination of 1 (file).
+01FD   0A84           00788                 Incf    FSR
+01FE   0008           00789                 RETURN
+                      00790 ;;;a function that helps reduce the number of lines od code;;;;;;;;;;;;;;
+                      00791 
+                      00792 ;#############################################################################################
+                      00793 ;#################################LOADING MAPS################################################
+                      00794 ;#############################################################################################
+                      00795 
+                      00796 
+                      00797 ;##############################################################################################
+                      00798 ;##################################Interrupt logic#############################################
+                      00799 ;##############################################################################################
+01FF   18A2           00800 Enter   BTFSC   REGGY,1
+0200   2???           00801                 GOTO    ENTER1x
+0201   2???           00802                 GOTO    ENTER0x
+                      00803         
+0202   1822           00804 ENTER1x BTFSC   REGGY,0
+0203   2???           00805                 GOTO    OPENBOX
+0204   2???           00806                 GOTO    ENTER10
+                      00807 
+0205   1822           00808 ENTER0x BTFSC   REGGY,0
+0206   0008           00809                 RETURN
+0207   2???           00810                 GOTO    ENTER00
+                      00811                 
+0208   0008           00812                 RETURN
+                      00813 
+                      00814 
+                      00815 ;ADDRESS COUNTER is (1)0xx xxxx for first line 
+                      00816 ;                   (1)1xx xxxx for second line
+                      00817 
+0209   1F1D           00818 ENTER00 BTFSS   CURSOR, 6
+020A   2???           00819                 CALL    ENTER00A        ;If cursor[6] =0 (first line) goto enter00A
+                      00820         
+020B   1B1D           00821                 BTFSC   CURSOR, 6
+020C   2???           00822                 CALL    ENTER00B        ;If cursor[6] =1 (2nd line) goto enter00B
+020D   0008           00823                 RETURN
+                      00824         
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 17
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00825 
+020E                  00826 ENTER00A        
+020E   1422           00827                 BSF             REGGY, 0        ; reggy[0] =1 => new state is 01        
+020F   2???           00828                 CALL    PRINTMAPSMENU   ; print maps menu subroutine
+0210   0008           00829                 RETURN
+0211                  00830 ENTER00B
+0211   14A2           00831                 BSF             REGGY, 1        ; reggy[1] =1 => new state is 10 for dicciculty chose
+0212   2???           00832                 GOTO    PRINTDIFFICULTY 
+                      00833         
+                      00834 
+0213   081D           00835 ENTER10 MOVFW   CURSOR          ; W<--CURSOR, note CURSOR can be destroyed at this stage
+0214   3A00           00836                 XORLW   b'00000000'     ; if CURSOR == 0X00 (EASY), W=0X00
+0215   1903           00837                 BTFSC   STATUS, 2       ; if Z flag =1
+0216   2???           00838                 CALL    SETEASY         ;I need to set the flag and set the mines to 2 rather than the d
+                            efault 1
+                      00839 
+0217   081D           00840                 MOVFW   CURSOR
+0218   3A05           00841                 XORLW   b'00000101'     ; if CURSOR == 0X05 (MED), W=0X00
+0219   1903           00842                 BTFSC   STATUS, 2       ; if Z flag =1 goto ENTER10M
+                      00843 
+021A   15A2           00844                 BSF             REGGY, 3        ;       set Med flag
+                      00845 
+021B   081D           00846                 MOVFW   CURSOR
+021C   3A09           00847                 XORLW   b'00001001'     ; if CURSOR == 0X09 (MED), W=0X00
+021D   1903           00848                 BTFSC   STATUS, 2       ; if Z flag =1 goto ENTER10H
+021E   1522           00849                 BSF             REGGY, 2        ;       set Hard flag
+                      00850 
+                      00851 
+                      00852                 
+021F   2???           00853                 CALL    DB40ms
+0220   14A2           00854                 BSF             REGGY, 1
+0221   1422           00855                 BSF     REGGY, 0        ; set State flags to 11
+                      00856 
+0222   019D           00857                 CLRF    CURSOR          ; reset cursor address to zero (1st line, 1st column)
+0223   2???           00858                 CALL    RESETCURSOR     ; If needed    (MIGHT NOT  Be needed)
+                      00859                 
+0224   2???           00860                 GOTO    PRINTPLAYMODE   
+0225   0008           00861                 RETURN
+                      00862 
+0226   1622           00863 SETEASY BSF             REGGY, 4        ;       set Easy flag
+0227   3002           00864                 MOVLW   d'2'
+0228   009E           00865                 MOVWF   MINES           ;Number of mines has to be set to 2     
+0229   0008           00866                 RETURN
+                      00867 
+                      00868 ;LEFT Subroutine;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+022A                  00869 LEFT
+022A   18A2           00870                 BTFSC   REGGY,1
+022B   2???           00871                 GOTO    LEFT1x
+022C   2???           00872                 GOTO    LEFT0x
+                      00873         
+022D   1822           00874 LEFT1x  BTFSC   REGGY,0
+022E   2???           00875                 GOTO    LEFT11
+022F   0008           00876                 RETURN
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 18
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00877 
+0230   1822           00878 LEFT0x  BTFSC   REGGY,0
+0231   2???           00879                 GOTO    LEFT01
+0232   0008           00880                 RETURN
+                      00881 
+                      00882                 ;No need to check for 00 and 10 since Left button is not used
+0233   0008           00883                 RETURN                  
+                      00884 
+0234   12A2           00885 LEFT01  BCF             REGGY, 5        ; Reggy[5] = 0 => map1
+0235   1506           00886                 BSF             PORTB, 2        ; turn green LED ON
+0236   1186           00887                 BCF             PORTB, 3        ;Turn Red LED OFF
+0237   2???           00888                 CALL    LOADMAP1
+0238   2???           00889                 CALL    MAINMENU
+0239   0008           00890                 RETURN
+                      00891 
+023A   3001           00892 LEFT11  MOVLW   d'1'            ; W <-- 1
+023B   029D           00893                 SUBWF   CURSOR, 1       ; CURSOR <-- CURSOR-1
+023C   0284           00894                 SUBWF   FSR, 1          ; FSR <-- FSR -1
+023D   081D           00895                 MOVF    CURSOR, 0       ; W <-- CURSOR (-1)
+023E   00A0           00896                 MOVWF   TEMP            ; TEMP <-- W    just a copy
+                      00897         
+023F   3AFF           00898                 XORLW   h'FF'           ; W = W XOR CURSOR(-1) ==> if cursor was 0x00 (0x00-1 = 0xFF)
+0240   1903           00899                 BTFSC   STATUS, 2       ; if Z flag =1 (if cursor was at 0x00)
+0241   2???           00900                 CALL    LEFT11A         ; GOTO LEFT11A
+                      00901 
+0242   0820           00902                 MOVF    TEMP,0          ; W <-- initial CURSOR (-1), in case LEFT11A was executed 
+                      00903                                                         ; both CURSOR and W have been modified
+                      00904 
+0243   3A3F           00905                 XORLW   h'3F'           ; W = W XOR CURSOR(-1) ==> if cursor was 0x40 (0x40-1 = 0x3F)
+0244   1903           00906                 BTFSC   STATUS, 2       ; if Z flag =1 (if cursor was at 0x40)
+0245   2???           00907                 CALL    LEFT11B         ; GOTO LEFT11B
+                      00908 
+0246   2???           00909                 CALL    SETCURSORLCD    ; set cursor LCD
+                      00910 
+0247   0008           00911                 RETURN
+                      00912 
+0248   3000           00913 LEFT11A MOVLW   h'00'           ; W <-- 0x4F (2nd row, last column)
+0249   009D           00914                 MOVWF   CURSOR          ; CURSOR <-- W                                          ;BONUS;
+024A   300C           00915                 MOVLW   D'12'           ; W <-- 27 (2nd row, last column)
+024B   0084           00916                 MOVWF   FSR                     ; FSR <-- W
+024C   0008           00917                 RETURN
+                      00918 
+024D   3007           00919 LEFT11B MOVLW   h'07'           ; W <-- 0x0F (1st row, last column)
+024E   009D           00920                 MOVWF   CURSOR          ; CURSOR <-- W                                          ;BONUS;
+024F   3013           00921                 MOVLW   d'19'
+0250   0084           00922                 MOVWF   FSR     
+0251   0008           00923                 RETURN  
+                      00924 
+                      00925 ;RIGHT Subroutine;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      00926 
+0252   18A2           00927 RIGHT   BTFSC   REGGY,1
+0253   2???           00928                 GOTO    RIGHT1x
+0254   2???           00929                 GOTO    RIGHT0x
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 19
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00930         
+0255   1822           00931 RIGHT1x BTFSC   REGGY,0
+0256   2???           00932                 GOTO    RIGHT11
+0257   2???           00933                 GOTO    RIGHT10
+                      00934 
+0258   1822           00935 RIGHT0x BTFSC   REGGY,0
+0259   2???           00936                 GOTO    RIGHT01
+025A   0008           00937                 RETURN
+                      00938 
+025B   0008           00939                 RETURN
+                      00940 
+                      00941 
+                      00942 
+025C   12A2           00943 RIGHT01 BCF             REGGY, 5        ; Reggy[5] = 1 => map2
+025D   1586           00944                 BSF             PORTB, 3        ; turn red LED ON
+025E   1106           00945                 BCF             PORTB, 2        ;Turn Green led OFF
+025F   2???           00946                 CALL    LOADMAP2        ;LOAD MAP2
+0260   2???           00947                 CALL    MAINMENU
+0261   0008           00948                 RETURN
+                      00949 
+                      00950 
+0262   081D           00951 RIGHT10 MOVF    CURSOR, 0       ;W <-- CURSOR 
+0263   00A0           00952                 MOVWF   TEMP            ; TEMP <-- W    just a copy
+                      00953         
+0264   3A00           00954                 XORLW   h'00'           ;W <-- W XOR 0x00
+0265   1903           00955                 BTFSC   STATUS, 2       ; if Z flag =1 (if cursor at 0x00 -> EASY)
+0266   2???           00956                 CALL    RIGHT10E        ; GOTO RIGHT10E
+                      00957 
+0267   0820           00958                 MOVF    TEMP,0          ; W <-- initial CURSOR, in case RIGHT10E was executed 
+                      00959                                 ;both CURSOR and W have been modified and need to be restored
+                      00960 
+0268   3A05           00961                 XORLW   h'05'           ;W <-- W XOR 0x05
+0269   1903           00962                 BTFSC   STATUS, 2       ; if Z flag =1 (if cursor at 0x05 -> MED)
+026A   2???           00963                 CALL    RIGHT10M        ; GOTO RIGHT10M
+                      00964 
+026B   0820           00965                 MOVF    TEMP,0          ; W <-- initial CURSOR, in case RIGHT10M was executed 
+                      00966                                 ;both CURSOR and W have been modified and need to be restored
+                      00967 
+026C   3A09           00968                 XORLW   h'09'           ;W <-- W XOR 0x09
+026D   1903           00969                 BTFSC   STATUS, 2       ; if Z flag =1 (if cursor at 0x09 -> HARD)
+026E   2???           00970                 CALL    RIGHT10H        ; GOTO RIGHT10H
+                      00971 
+026F   2???           00972                 CALL    SETCURSORLCD    ; set cursor LCD
+                      00973 
+0270   0008           00974                 RETURN
+                      00975 
+                      00976 
+0271                  00977 RIGHT10E
+0271   3020           00978                 MOVLW   b'00100000'             ;Space
+0272   2???           00979                 CALL    PRNTCHR
+0273   3005           00980                 MOVLW   h'05'           ;W <-- 0x05 (cursor pointing on MED)
+0274   009D           00981                 MOVWF   CURSOR          ; CURSOR <-- W
+0275   2???           00982                 CALL    SETCURSORLCD
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 20
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0276   302A           00983                 MOVLW   b'00101010'             ;*
+0277   2???           00984                 CALL    PRNTCHR
+                      00985                 
+                      00986                 
+0278   0008           00987                 RETURN
+                      00988 
+0279                  00989 RIGHT10M
+0279   3020           00990                 MOVLW   b'00100000'             ;Space
+027A   2???           00991                 CALL    PRNTCHR
+027B   2???           00992                 CALL    SETCURSORLCD
+027C   3009           00993                 MOVLW   h'09'           ;W <-- 0x09 (cursor pointing on HARD)
+027D   009D           00994                 MOVWF   CURSOR          ; CURSOR <-- W
+027E   2???           00995                 CALL    SETCURSORLCD
+027F   302A           00996                 MOVLW   b'00101010'             ;*
+0280   2???           00997                 CALL    PRNTCHR
+                      00998                 
+                      00999 
+0281   0008           01000                 RETURN
+                      01001 
+0282                  01002 RIGHT10H
+0282   3020           01003                 MOVLW   b'00100000'             ;Space
+0283   2???           01004                 CALL    PRNTCHR
+0284   2???           01005                 CALL    SETCURSORLCD
+                      01006                 
+0285   3000           01007                 MOVLW   h'00'           ;W <-- 0x00 (cursor pointing on EASY)
+0286   009D           01008                 MOVWF   CURSOR          ; CURSOR <-- W
+0287   2???           01009                 CALL    SETCURSORLCD
+0288   302A           01010                 MOVLW   b'00101010'             ;*
+0289   2???           01011                 CALL    PRNTCHR
+028A   2???           01012                 CALL    SETCURSORLCD
+028B   0008           01013                 RETURN
+                      01014 
+                      01015 
+028C   3001           01016 RIGHT11 MOVLW   d'1'            ; W <-- 1
+028D   079D           01017                 ADDWF   CURSOR, 1       ; CURSOR <-- CURSOR+1
+028E   0784           01018                 ADDWF   FSR,1           ; FSR <-- FSR+1
+028F   081D           01019                 MOVF    CURSOR, 0       ; W <-- CURSOR (+1)
+0290   00A0           01020                 MOVWF   TEMP            ; TEMP <-- W    just a copy
+                      01021         
+0291   3A08           01022                 XORLW   h'08'           ; W = W XOR CURSOR(+1) ==> if cursor was 0x0F (0x0F+1 = 0x10)
+0292   1903           01023                 BTFSC   STATUS, 2       ; if Z flag =1 (if cursor was at 0x00)
+0293   2???           01024                 CALL    RIGHT11A        ; GOTO RIGHT11A
+                      01025 
+0294   0820           01026                 MOVF    TEMP,0          ; W <-- initial CURSOR (+1), in case RIGHT11A was executed 
+                      01027                                 ;both CURSOR and W have been modified
+                      01028 
+0295   3A48           01029                 XORLW   h'48'           ; W = W XOR CURSOR(+1) ==> if cursor was 0x4F (0x4F+1 = 0x50)
+0296   1903           01030                 BTFSC   STATUS, 2       ; if Z flag =1 (if cursor was at 0x4F)
+0297   2???           01031                 CALL    RIGHT11B        ; GOTO RIGHT11B
+                      01032 
+0298   2???           01033                 CALL    SETCURSORLCD    ; set cursor LCD
+                      01034 
+0299   0008           01035                 RETURN
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 21
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      01036         
+                      01037 
+029A                  01038 RIGHT11A
+029A   3040           01039                 MOVLW   h'40'           ; W <-- 0x4F (2nd row, 1st column)              ;BONUS;
+029B   009D           01040                 MOVWF   CURSOR          ; CURSOR <-- W
+029C   3014           01041                 MOVLW   d'20'
+029D   0084           01042                 MOVWF   FSR
+029E   0008           01043                 RETURN
+                      01044 
+029F                  01045 RIGHT11B
+029F   3000           01046                 MOVLW   h'00'           ; W <-- 0x00 (1st row, 1st column)              ;BONUS;
+02A0   009D           01047                 MOVWF   CURSOR          ; CURSOR <-- W
+02A1   300C           01048                 MOVLW   D'12'           ; W <-- 12 (1st row, 1st column) 
+02A2   0084           01049                 MOVWF   FSR                     ; FSR <-- W
+02A3   0008           01050                 RETURN
+                      01051 ;Right Subroutine;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      01052 
+                      01053 ;UP_DOWN SUBROUTINE############################################
+02A4   18A2           01054 U_D             BTFSC   REGGY,1
+02A5   2???           01055                 GOTO    UD1x
+02A6   2???           01056                 GOTO    UD0x
+                      01057         
+02A7   1822           01058 UD1x    BTFSC   REGGY,0
+02A8   2???           01059                 GOTO    U_D2
+02A9   0008           01060                 RETURN
+                      01061 
+02AA   1822           01062 UD0x    BTFSC   REGGY,0
+02AB   0008           01063                 RETURN
+02AC   2???           01064                 GOTO    U_D1
+                      01065 
+02AD   0008           01066                 RETURN
+                      01067 
+                      01068 ;ADDRESS COUNTER is (1)0xx xxxx for first line 
+                      01069 ;                   (1)1xx xxxx for second line
+                      01070 
+02AE   3020           01071 U_D1    MOVLW   b'00100000'     ;Space
+02AF   2???           01072                 CALL    PRNTCHR
+02B0   1F1D           01073                 BTFSS   CURSOR, 6       ; If cursor[6] =0 (first line)
+                      01074                 
+02B1   3040           01075                 MOVLW   h'40'           ; W <--0x40
+02B2   1B1D           01076                 BTFSC   CURSOR, 6       ; If cursor[6] =1 (2nd line)
+02B3   3000           01077                 MOVLW   h'00'           ; W <--0x00
+                      01078 
+                      01079                 
+02B4   009D           01080                 MOVWF   CURSOR          ; CURSOR <-- W
+                      01081                 
+                      01082 
+02B5   2???           01083                 CALL    SETCURSORLCD    ; calling new function
+02B6   302A           01084                 MOVLW   b'00101010'     ;Space
+02B7   2???           01085                 CALL    PRNTCHR
+                      01086 
+02B8   2???           01087                 CALL    SETCURSORLCD    
+02B9   0008           01088                 RETURN
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 22
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      01089 
+                      01090 
+02BA   3040           01091 U_D2    MOVLW   h'40'           ; W <-- 40
+02BB   1F1D           01092                 BTFSS   CURSOR, 6       ; If cursor[6] =0 (first line)
+02BC   2???           01093                 GOTO    Line2
+02BD   2???           01094                 GOTO    Line1
+02BE                  01095 Line1           
+02BE   029D           01096                 SUBWF   CURSOR, 1       ; CURSOR <-- CURSOR - 0x40
+02BF   3008           01097                 MOVLW   D'8'
+02C0   0284           01098                 SUBWF   FSR, 1          ; FSR <-- FSR - 8
+02C1   2???           01099                 call    SETCURSORLCD
+02C2   0008           01100                 RETURN
+                      01101 
+02C3                  01102 Line2   
+02C3   079D           01103                 ADDWF   CURSOR, 1       ; CURSOR <--0x40 + CURSOR
+02C4   3008           01104                 MOVLW   D'8'
+02C5   0784           01105                 ADDWF   FSR, 1          ; FSR <--FSR +8
+02C6   2???           01106                 call    SETCURSORLCD
+02C7   0008           01107                 RETURN
+                      01108 ;UP_DOWN SUBROUTINE############################################
+                      01109 
+                      01110 ;##############################################################################################
+                      01111 ;##################################Interrupt logic#############################################
+                      01112 ;##############################################################################################
+                      01113                 
+                      01114 
+                      01115 
+                      01116 ;##############################################################################################
+                      01117 ;####################(Open box and print inner value) Playing Mode Logic ######################
+                      01118 ;##############################################################################################
+                      01119 
+                      01120 ;;;;;;;;;;;;;;;;;;;Opening the box and seeing what we have;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+02C8   1B80           01121 OPENBOX BTFSC   INDF,7          ; In order not to open the box again I need To check a bit in INDF
+02C9   2???           01122                 GOTO    FREEZE
+02CA   1E00           01123                 BTFSS   INDF,4          ;A mine has the fourth bit(* is 00101010) as 0. everything else 
+                            has it as 1
+02CB   2???           01124                 GOTO    HITMINE
+02CC   2???           01125                 GOTO    HITBOX
+                      01126         
+02CD   2???           01127 HITMINE CALL    BUZZ
+Message[305]: Using default destination of 1 (file).
+02CE   0B9E           01128                 DECFSZ  MINES           ;We Decrement the number of mines and we check if it is 0 or not
+02CF   2???           01129                 GOTO    PRINTBOX
+02D0   2???           01130                 GOTO    LOSSSQN
+                      01131 
+Message[305]: Using default destination of 1 (file).
+02D1   0B9F           01132 HITBOX  DECFSZ  BOXES           ;We Decrement the number of boxes without mines
+02D2   2???           01133                 GOTO    PRINTBOX
+02D3   2???           01134                 GOTO    WINSQN
+                      01135 
+02D4                  01136 PRINTBOX
+02D4   0800           01137                 MOVFW   INDF
+02D5   2???           01138                 CALL    PRNTCHR
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 23
+Minesweeper
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+02D6   2???           01139                 CALL    SETCURSORLCD    ;to put the cursor back in place
+02D7   1780           01140                 BSF             INDF,7
+02D8   0008           01141 FREEZE  RETURN
+                      01142 
+                      01143 ;;;;;;;;;;;;;;;;;;;Opening the box and seeing what we have;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                      01144 
+                      01145 
+                      01146 ;##############################################################################################
+                      01147 ;####################(Open box and print inner value) Playing Mode Logic ######################
+                      01148 ;##############################################################################################
+3FF1                  01149                 END
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 24
+Minesweeper
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+BOXES                             0000001F
+BUZZ                              00000114
+C                                 00000000
+CLEARSCREEN                       00000139
+COUNT1                            00000027
+COUNT1ms1                         00000029
+COUNT2                            00000026
+COUNT3                            00000025
+COUNT4                            00000021
+CURSOR                            0000001D
+DB1ms                             00000125
+DB40ms                            0000012A
+DC                                00000001
+DUMMY                             00000023
+EEADR                             00000009
+EECON1                            00000088
+EECON2                            00000089
+EEDATA                            00000008
+EEIE                              00000006
+EEIF                              00000004
+ENTER00                           00000209
+ENTER00A                          0000020E
+ENTER00B                          00000211
+ENTER0x                           00000205
+ENTER10                           00000213
+ENTER1x                           00000202
+ET                                0000012F
+Enter                             000001FF
+F                                 00000001
+FLIKRCOUNT                        00000028
+FLKR                              0000010A
+FLSHLED                           00000108
+FREEZE                            000002D8
+FSR                               00000004
+GIE                               00000007
+HITBOX                            000002D1
+HITMINE                           000002CD
+INDF                              00000000
+INTCON                            0000000B
+INTE                              00000004
+INTEDG                            00000006
+INTF                              00000001
+IRP                               00000007
+InDrct                            000001FC
+JUMP                              00000180
+LCDINT                            0000001B
+LEFT                              0000022A
+LEFT01                            00000234
+LEFT0x                            00000230
+LEFT11                            0000023A
+LEFT11A                           00000248
+LEFT11B                           0000024D
+LEFT1x                            0000022D
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 25
+Minesweeper
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LOAD                              000000FE
+LOADMAP1                          000001B2
+LOADMAP2                          000001D7
+LOOP1ms                           00000127
+LOSSSQN                           0000018D
+Line1                             000002BE
+Line2                             000002C3
+MAIN                              00000008
+MAINMENU                          0000005A
+MINES                             0000001E
+NOT_PD                            00000003
+NOT_RBPU                          00000007
+NOT_TO                            00000004
+ONEDIGIT                          00000178
+OPENBOX                           000002C8
+OPTION_REG                        00000081
+PCL                               00000002
+PCLATH                            0000000A
+PICK                              00000181
+PORTA                             00000005
+PORTB                             00000006
+PRINTBOX                          000002D4
+PRINTDIFFICULTY                   0000008A
+PRINTFULLMAP                      000000F1
+PRINTLOSS                         000000B1
+PRINTMAPSMENU                     00000074
+PRINTPLAYMODE                     000000BB
+PRINTSQUARES                      000000CF
+PRINTTIME                         000000E0
+PRINTWIN                          000000A9
+PRNTCHR                           00000119
+PS0                               00000000
+PS1                               00000001
+PS2                               00000002
+PSA                               00000003
+RBIE                              00000003
+RBIF                              00000000
+RD                                00000000
+REGGY                             00000022
+RESETCURSOR                       0000014A
+RIGHT                             00000252
+RIGHT01                           0000025C
+RIGHT0x                           00000258
+RIGHT10                           00000262
+RIGHT10E                          00000271
+RIGHT10H                          00000282
+RIGHT10M                          00000279
+RIGHT11                           0000028C
+RIGHT11A                          0000029A
+RIGHT11B                          0000029F
+RIGHT1x                           00000255
+RP0                               00000005
+RP1                               00000006
+MPASM  5.35beta                          CODE.ASM   5-4-2015  16:11:12         PAGE 26
+Minesweeper
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SETCURSORLCD                      00000140
+SETEASY                           00000226
+SKIP                              0000017D
+SMTHNG                            00000101
+STATUS                            00000003
+STOP                              00000107
+T0CS                              00000005
+T0IE                              00000005
+T0IF                              00000002
+T0SE                              00000004
+TEMP                              00000020
+TEMP1                             0000002A
+TIMER                             00000160
+TMR0                              00000001
+TMR0int                           0000014E
+TOPRINT                           00000024
+TRISA                             00000085
+TRISB                             00000086
+UD0x                              000002AA
+UD1x                              000002A7
+U_D                               000002A4
+U_D1                              000002AE
+U_D2                              000002BA
+W                                 00000000
+WELCOME                           0000003A
+WINSQN                            0000019F
+WR                                00000001
+WREN                              00000002
+WRERR                             00000003
+Z                                 00000002
+_CP_OFF                           00003FFF
+_CP_ON                            0000000F
+_HS_OSC                           00003FFE
+_LP_OSC                           00003FFC
+_PWRTE_OFF                        00003FFF
+_PWRTE_ON                         00003FF7
+_RC_OSC                           00003FFF
+_WDT_OFF                          00003FFB
+_WDT_ON                           00003FFF
+_XT_OSC                           00003FFD
+__16F84A                          00000001
+__DEBUG                           1
+nothing                           00000039
+ret                               0000015D
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :     7 reported,     0 suppressed
+
+
